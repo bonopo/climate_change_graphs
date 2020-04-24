@@ -1,17 +1,25 @@
 #cumulative sum
 
-sapply(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate", "RCurl","imager", "gridExtra"), require, character.only = T )
+install.packages(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate"))
 
-setwd("C:/Users/Menke/Documents/Uni/R_practice/scripts/precip_cumsum_germany/")
+sapply(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate", "RCurl","imager"), require, character.only = T )
+
+setwd("t:/MAs/rmenke/r_gis_pro/r_projects/data/")
 
 
+id = "01443";cnp = FALSE;year = c(2013:2018)
 
 precip.cumsum = function(
   id = "01443",
   cnp = FALSE,
   year = as.integer(substr(date(), 21,24))
-  )
-{
+  ){
+  
+  remove_row =function(data, rows){
+    result = data[-c(rows),]
+    return(result)
+  }
+  
    #preambel
   do.call(file.remove, list(list.files("./extr_data/rec/", full.names = TRUE)))
   do.call(file.remove, list(list.files("./extr_data/old/", full.names = TRUE)))
@@ -54,13 +62,17 @@ clima_old = read.csv2(paste0("./extr_data/old/", files[str_detect(files, "produk
 
 clima_cpl = clima_rec %>% 
   filter(date > clima_old$date %>% tail(.,1)) %>% 
-  rbind(clima_old,. )
+  rbind(clima_old,. ) %>% 
+  select(date, QN_4, RSK) 
 
-#no NAs (if not error)
- clima_cpl$RSK[which(clima_cpl$RSK<0)] = 0 
- #can not do NA if not cumsum doesn't work (better average of that period)
- clima_cpl$RSK[is.na(clima_cpl$RSK<0)] = 0 
+#removing leap year
+clima_leap = clima_cpl %>% 
+  mutate(leap_y = leap_year(date), ydy= yday(date)) 
 
+to_be_removed = which(clima_cpl$date %in% clima_leap$date[which(clima_leap$leap_y == T & clima_leap$ydy == 60)])
+clima_cpl = remove_row(clima_cpl, to_be_removed)
+ 
+  
 #climate normal period
 if(cnp == TRUE){
 cat("Please enter Climate Normal Period (Default: 1961 - 1990; leave empty for default!!)")
@@ -71,44 +83,59 @@ cnp_end = readline(prompt = paste("The Time Series ends", tail(clima_cpl$date,1)
   cnp_end = 1990
 }
   
- 
- year_ordered = order(as.numeric(year), decreasing = T)
- clima_int = matrix(nrow = 0, ncol=2) %>% as.data.frame()
-#climate data of interest subset
+#handling NAs
+error_data = filter(clima_cpl, year(date) %in% c(cnp_begin:cnp_end, year)) 
+print("These are the dates with NAs:")
+print(error_data[which(error_data$RSK < 0 | is.na(error_data$RSK)),])  
 
-if(length(year)>1 & as.integer(substr(date(), 21,24)) %in% year){ #calculating for this year and years before
-  
-  for(i in 1:length(year)){
-    
-  clima_int_temp = clima_cpl %>% 
-      filter(year(date) >= year[i] ) %>% 
-      mutate(cs_ns= cumsum(RSK)) %>%  
-      select(date, cs_ns) 
-  
-  clima_int = bind_rows(clima_int, clima_int_temp)
-  
-  
-    
-    
-    
+#handling gaps
+time_seq=list()
+for(i in 1:length(year)){
+  year_int = clima_cpl %>% filter(year[i] ==year(date)) #year to check for completeness
+  time_seq[[i]] = data.frame(date = seq.Date(from = dmy(paste0("01-01-", year[i])), to =  ymd(tail(year_int$date,1)), by="day")) #defining ideal time sequence
+  if(NROW(time_seq[[i]]) != NROW(year_int)){
+    time_check = base::merge(x= year_int, y= time_seq[[i]],  by= "date", all.y =T)
+    print("These are the missing dates")
+    print(time_check[which(is.na(time_check$RSK)),])
   }
-  
 }
   
-}else{
-  clima_int = clima_cpl %>% 
-  filter(year(date) >= year & year(date) < year+1) %>% 
-    mutate(cs_ns = cumsum(RSK))
-}
+
+#no NAs (if not error) the NA have to defined as 0
+ clima_cpl$RSK[which(clima_cpl$RSK<0)] = 0 
+ #can not do NA if not cumsum doesn't work (better average of that period)
+ clima_cpl$RSK[is.na(clima_cpl$RSK<0)] = 0  
+ 
+ 
+ year_ordered = year[order(as.numeric(year), decreasing = T)] %>% c()
+ clima_int = matrix(nrow = 0, ncol=2) %>% as.data.frame()
+
+ #climate data of interest subset
+
+clima_int = clima_cpl %>% 
+        mutate(year_date = year(date)) %>% 
+        filter(year_date %in% year_ordered) %>% 
+        group_by(year_date) %>% 
+        mutate(cs_ns = cumsum(RSK)) %>% 
+        dplyr::select(date, year_date, cs_ns) %>% 
+        group_split()
+ 
 
 clima_ref = clima_cpl %>% 
   filter(year(date) >= cnp_begin & year(date) < cnp_end+1) %>% 
-  mutate(day = dmy(paste0(day(date), "-",month(date), "-" , year))) %>%   group_by(day) %>% 
+  mutate(yday = yday(date)) %>%
+  group_by(yday) %>% 
   summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>% 
   mutate(cum_sum = cumsum(mn_dy_ns))
 
-#percentage of rain 
-int = which(tail(clima_int$date,1) == clima_ref$day)
+#percentage of rain of what normaly would fall for every table in list of clima_int
+int=c()
+for(i in 1:length(year_ordered)){
+
+    int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref$yday)
+      
+}
+
 if(is.numeric(int)){
   ratio_precip = (clima_int$cs_ns[int]/clima_ref$cum_sum[int]) *100
 }else{
