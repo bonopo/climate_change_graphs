@@ -1,6 +1,6 @@
 #cumulative sum
 
-install.packages(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate"))
+#install.packages(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate"))
 
 sapply(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate", "RCurl","imager"), require, character.only = T )
 
@@ -65,13 +65,7 @@ clima_cpl = clima_rec %>%
   rbind(clima_old,. ) %>% 
   select(date, QN_4, RSK) 
 
-#removing leap year
-clima_leap = clima_cpl %>% 
-  mutate(leap_y = leap_year(date), ydy= yday(date)) 
 
-to_be_removed = which(clima_cpl$date %in% clima_leap$date[which(clima_leap$leap_y == T & clima_leap$ydy == 60)])
-clima_cpl = remove_row(clima_cpl, to_be_removed)
- 
   
 #climate normal period
 if(cnp == TRUE){
@@ -120,26 +114,42 @@ clima_int = clima_cpl %>%
         dplyr::select(date, year_date, cs_ns) %>% 
         group_split()
  
+#reference year 
+#removing leap year in reference years
+clima_leap = clima_cpl %>% 
+  filter(year(date) >= cnp_begin & year(date) < cnp_end+1) %>%
+   mutate(leap_y = leap_year(date), ydy= yday(date)) 
+ 
+to_be_removed = which(clima_leap$date %in% clima_leap$date[which(clima_leap$leap_y == T & clima_leap$ydy == 60)])
+clima_ref_without_leap = remove_row(clima_leap, to_be_removed) %>% 
+  dplyr::mutate(ydy = if_else(ydy==366,  365, ydy)) %>%  #if not the leap years will still have 366 as the yday
+  group_by(ydy) %>%  
+  summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>% 
+  mutate(cum_sum = cumsum(mn_dy_ns)) 
 
-clima_ref = clima_cpl %>% 
-  filter(year(date) >= cnp_begin & year(date) < cnp_end+1) %>% 
-  mutate(yday = yday(date)) %>%
-  group_by(yday) %>% 
+
+clima_ref =  clima_cpl %>% 
+  filter(year(date) >= cnp_begin & year(date) < cnp_end+1) %>%
+  mutate(ydy = yday(date)) %>% 
+  group_by(ydy) %>%  
   summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>% 
   mutate(cum_sum = cumsum(mn_dy_ns))
 
 #percentage of rain of what normaly would fall for every table in list of clima_int
-int=c()
+int=c();ratio_precip = c()
 for(i in 1:length(year_ordered)){
+    if(yday(tail(clima_int[[i]]$date,1)) == 366){
+      int[i] = clima_ref_without_leap$ydy[365]
+    }else{
+    int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref_without_leap$ydy)
+    }
+  
 
-    int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref$yday)
-      
-}
-
-if(is.numeric(int)){
-  ratio_precip = (clima_int$cs_ns[int]/clima_ref$cum_sum[int]) *100
-}else{
-  ratio_precip = NA
+    if(is.numeric(int[i])){
+      ratio_precip[i] = (clima_int[[i]]$cs_ns[int[i]]/clima_ref$cum_sum[int[i]]) *100
+    }else{
+      ratio_precip[i] = NA
+    }
 }
 clima_int %<>% select(date, cs_ns) %>% as.tbl
 clima_ref %<>% select(date=day, cum_sum) %>% as.tbl()
