@@ -144,7 +144,7 @@ for(i in 1:length(year_ordered)){
     int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref_without_leap$ydy)
     }
   
-
+ 
     if(is.numeric(int[i])){
       ratio_precip[i] = (clima_int[[i]]$cs_ns[int[i]]/clima_ref$cum_sum[int[i]]) *100
     }else{
