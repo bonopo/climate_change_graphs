@@ -116,13 +116,17 @@ clima_int = clima_cpl %>%
  
 #reference year 
 #removing leap year in reference years
+#if not calculating the average rainfall per day will compare different days in those years where there was a leap year. since in the first step the average rainsum per day is calculated. which is then summed up in the 2nd step, this would lead to wrong matching in the average calculation. This is because I use the number of the day in the year (lubridate::yday) to calculate the average. 
+
 clima_leap = clima_cpl %>% 
   filter(year(date) >= cnp_begin & year(date) < cnp_end+1) %>%
    mutate(leap_y = leap_year(date), ydy= yday(date)) 
  
 to_be_removed = which(clima_leap$date %in% clima_leap$date[which(clima_leap$leap_y == T & clima_leap$ydy == 60)])
 clima_ref_without_leap = remove_row(clima_leap, to_be_removed) %>% 
-  dplyr::mutate(ydy = if_else(ydy==366,  365, ydy)) %>%  #if not the leap years will still have 366 as the yday
+  group_by(year(date)) %>% 
+  mutate(ydy = 1:365) %>% #if not the leap years will still have 366 as the yday
+  ungroup() %>%  
   group_by(ydy) %>%  
   summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>% 
   mutate(cum_sum = cumsum(mn_dy_ns)) 
@@ -138,37 +142,53 @@ clima_ref =  clima_cpl %>%
 #percentage of rain of what normaly would fall for every table in list of clima_int
 int=c();ratio_precip = c()
 for(i in 1:length(year_ordered)){
-    if(yday(tail(clima_int[[i]]$date,1)) == 366){
-      int[i] = clima_ref_without_leap$ydy[365]
+    if(yday(tail(clima_int[[i]]$date,1)) == 366){ #if the year of interest is a leap year it will always compare it's 'sum-till-today' with the 'sum-till-yesterday' in the reference period.
+      int[i] = clima_ref_without_leap$ydy[365] #since the reference is only 365 days
     }else{
     int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref_without_leap$ydy)
     }
   
  
     if(is.numeric(int[i])){
-      ratio_precip[i] = (clima_int[[i]]$cs_ns[int[i]]/clima_ref$cum_sum[int[i]]) *100
+      ratio_precip[i] = (clima_int[[i]]$cs_ns[int[i]]/clima_ref_without_leap$cum_sum[int[i]]) *100
     }else{
       ratio_precip[i] = NA
     }
 }
-clima_int %<>% select(date, cs_ns) %>% as.tbl
-clima_ref %<>% select(date=day, cum_sum) %>% as.tbl()
 
-plot_data = merge(x=clima_int, y = clima_ref, by= "date", all.x = T )
+#plotting
+clima_int_plot = do.call( "rbind",clima_int) %>% mutate(ydy = yday(ymd(date))) %>% 
+  dplyr::select(ydy, year_date, cs_ns) %>% as.tbl
 
-print(
-  ggplot(data = plot_data)+
-  geom_line(aes(x=date, y= cs_ns))+
-  geom_line(data= clima_ref, aes(x=date, y=cum_sum), col="red", show.legend = T)+
+nice <- theme_bw()+
+    theme(legend.position = "bottom",
+          text = element_text(size = 12))
+# plot_data = merge(x=clima_int, y = clima_ref, by= "date", all.x = T )
+
+#print(
+  
+  
+  ggplot(data = clima_int_plot)+
+  geom_line(aes(x=ydy, y= cs_ns, color = as.factor(year_date)))+
+  geom_line(data= clima_ref, aes(x=ydy, y=cum_sum), col="red", lwd=1.4) +
+  geom_blank(aes(color="Climatological normal"))+
   ylab("cumulative precipitaion [mm]")+
-     xlab(paste0("1.1.",cnp_begin," - ","31.12.",cnp_end))+
-    theme(axis.title.x = element_text(colour = "red"))+
-    annotate(geom="text", clima_int$date[1], max(clima_int$cs_ns),  hjust = -0.2, vjust = -1, label=paste0(round(ratio_precip,1)," %"))+
-    ggtitle(paste("id:",id, clima_int$date[nrow(clima_int)]))
+  theme(axis.title.x = element_text(colour = "red"))+
+  nice+
+    guides(linetype = guide_legend(override.aes = list(size = c(rep(1, length(year_ordered)), 1.4))))
+    
+  scale_color_manual(element_blank(), values = c("Climatological normal" = "red"), guide = guide_legend(override.aes = list(size = c(rep(1, length(year_ordered)), 1.4)))) 
+  
+  
+  #+
+  theme(axis.text=element_text(size=12),legend.text = element_text(size=15),legend.title = element_text(size=17),axis.title = element_text(size=17)) #+
+  scale_x_date()
+   
     
 ) 
-
-
+ # annotate(geom="text",  max(clima_int_plot$ydy),  hjust = -0.2, vjust = -1, label=paste0(round(ratio_precip[i],0)," %"))+
+ # ggtitle(paste("id:",id, clima_int$date[nrow(clima_int)]))+
+#xlab(paste0("1.1.",cnp_begin," - ","31.12.",cnp_end))+
  }
 
 #cnp = edit climate normal period (year to compate to)
