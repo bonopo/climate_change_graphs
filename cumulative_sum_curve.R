@@ -1,8 +1,9 @@
 #cumulative sum
 
 #install.packages(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate"))
+#library(RColorBrewer)
 
-sapply(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate", "RCurl","imager"), require, character.only = T )
+sapply(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate", "RCurl", "RColorBrewer"), require, character.only = T )
 
 setwd("t:/MAs/rmenke/r_gis_pro/r_projects/data/")
 
@@ -12,7 +13,8 @@ id = "01443";cnp = FALSE;year = c(2013:2018)
 precip.cumsum = function(
   id = "01443",
   cnp = FALSE,
-  year = as.integer(substr(date(), 21,24))
+  year = as.integer(substr(date(), 21,24)),
+  labels=FALSE
   ){
   
   remove_row =function(data, rows){
@@ -20,13 +22,20 @@ precip.cumsum = function(
     return(result)
   }
   
-   #preambel
-  do.call(file.remove, list(list.files("./extr_data/rec/", full.names = TRUE)))
-  do.call(file.remove, list(list.files("./extr_data/old/", full.names = TRUE)))
-  hist_file = NULL
+  
+#reducing years to max 5
+  
+  if(length(year)>4){
+    year= year[1:5] #taking first 5 inputs
+  }
+  
+#preambel
+do.call(file.remove, list(list.files("./extr_data/rec/", full.names = TRUE)))
+do.call(file.remove, list(list.files("./extr_data/old/", full.names = TRUE)))
+hist_file = NULL
 
 
-  #downloading recent
+#downloading recent
 download.file(paste0("ftp://ftp-cdc.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/recent/tageswerte_KL_", id, "_akt.zip"), destfile = "rec.zip",  mode="wb")
 
 
@@ -137,7 +146,8 @@ clima_ref =  clima_cpl %>%
   mutate(ydy = yday(date)) %>% 
   group_by(ydy) %>%  
   summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>% 
-  mutate(cum_sum = cumsum(mn_dy_ns))
+  mutate(cum_sum = cumsum(mn_dy_ns)) %>% 
+  mutate(date_plot = as.Date(ydy, origin="2000-01-01"))
 
 #percentage of rain of what normaly would fall for every table in list of clima_int
 int=c();ratio_precip = c()
@@ -157,35 +167,43 @@ for(i in 1:length(year_ordered)){
 }
 
 #plotting
-clima_int_plot = do.call( "rbind",clima_int) %>% mutate(ydy = yday(ymd(date))) %>% 
-  dplyr::select(ydy, year_date, cs_ns) %>% as.tbl
+clima_int_plot = do.call( "rbind",clima_int) %>% 
+  mutate(ydy = yday(ymd(date)),
+         date_plot = ymd(paste0("2000-",month(date), "-", day(date)))) %>% 
+  dplyr::select(ydy, year_date, date_plot, cs_ns) %>% as.tbl
 
-nice <- theme_bw()+
-    theme(legend.position = "bottom",
-          text = element_text(size = 12))
-# plot_data = merge(x=clima_int, y = clima_ref, by= "date", all.x = T )
 
-#print(
+
+if(years >2){
+  n <- length(year)
+  #color_gg = display.brewer.all(n=n, select  = "Set2", type = "qual", colorblindFriendly = T)
+  qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+  col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))[1:n]
   
+}if(years==2){
+  col_vector = c("#7FC97F", "#BEAED4")
+}else{
+  col_vector=c("#7FC97F")
+}
+
+if(labels==F){
+  print(
   
   ggplot(data = clima_int_plot)+
-  geom_line(aes(x=ydy, y= cs_ns, color = as.factor(year_date)))+
-  geom_line(data= clima_ref, aes(x=ydy, y=cum_sum), col="red", lwd=1.4) +
-  geom_blank(aes(color="Climatological normal"))+
-  ylab("cumulative precipitaion [mm]")+
-  theme(axis.title.x = element_text(colour = "red"))+
-  nice+
-    guides(linetype = guide_legend(override.aes = list(size = c(rep(1, length(year_ordered)), 1.4))))
-    
-  scale_color_manual(element_blank(), values = c("Climatological normal" = "red"), guide = guide_legend(override.aes = list(size = c(rep(1, length(year_ordered)), 1.4)))) 
-  
-  
-  #+
-  theme(axis.text=element_text(size=12),legend.text = element_text(size=15),legend.title = element_text(size=17),axis.title = element_text(size=17)) #+
-  scale_x_date()
-   
-    
-) 
+    geom_line(aes(x=date_plot, y= cs_ns, color = as.factor(year_date)))+
+    geom_line(data= clima_ref, aes(x=date_plot, y=cum_sum, lty='Climatological normal'), col="red", lwd=1.4) +
+    ylab("cumulative precipitaion [mm]")+
+    scale_color_manual(values = col_vector)+
+    scale_x_date(date_breaks = "2 month", date_minor_breaks = "1 month", date_labels = "%b")+
+    labs(lty ="Reference",color ="" )+
+    theme(text = element_text(size = 6))+
+    theme_light()+
+    xlab("")
+      
+  ) 
+}
+
+
  # annotate(geom="text",  max(clima_int_plot$ydy),  hjust = -0.2, vjust = -1, label=paste0(round(ratio_precip[i],0)," %"))+
  # ggtitle(paste("id:",id, clima_int$date[nrow(clima_int)]))+
 #xlab(paste0("1.1.",cnp_begin," - ","31.12.",cnp_end))+
