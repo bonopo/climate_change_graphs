@@ -1,0 +1,25 @@
+server <- function(input, output, session) {
+ 
+  search_dwd <- eventReactive(input$search, {
+    withProgress(message = 'Generating data', value = 0.14, {
+    dwd.search(lat = input$lat, lon = input$lon,rad = input$rad, ref = input$ref)
+         
+      
+          
+       })
+  })
+  
+    output$search_result <- renderTable({
+    search_dwd()
+  })
+       
+   
+
+                
+                
+  output$ns_cum_sum <- renderPlot({input$ns_cum_sum})
+   
+  
+}
+
+

@@ -3,12 +3,38 @@
 #install.packages(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate"))
 #library(RColorBrewer)
 
-sapply(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate", "RCurl", "RColorBrewer"), require, character.only = T )
+sapply(c("dplyr", "magrittr", "utils", "tidyverse", "lubridate", "RCurl", "RColorBrewer", "rdwd"), require, character.only = T )
 
 setwd("t:/MAs/rmenke/r_gis_pro/r_projects/data/")
+setwd("C:/Users/Menke/Documents/Uni/R_practice/climate_change_graphs/")
+
+id = "01443";cnp = FALSE;year = c(2019:2020); lat = "48"; lon= "7.51"; ref="ref1"; rad = 50
 
 
-id = "01443";cnp = FALSE;year = c(2013:2018)
+hist_stations = nearbyStations(as.numeric(lat), as.numeric(lon), radius=50,res=c("daily"), var= c("kl"))
+
+hist_stations_filt = hist_stations %>% 
+          mutate(von_datum = ymd(von_datum)) %>% 
+          filter(von_datum <= ifelse(ref=="ref1", ymd("1961-01-01"), ymd("1981-01-01"))) %>% 
+  group_by(Stations_id) %>% 
+  summarise(rec_hist = length(per)) %>% 
+  filter(rec_hist ==2) %>% 
+  select(Stations_id)
+
+print_stations = merge(x = hist_stations_filt, y= hist_stations, all.x = T, by= "Stations_id")[,c("von_datum","bis_datum","Stationshoehe","geoBreite", "geoLaenge", "Stationsname")]
+
+names(print_stations)
+
+filter(hist_stations, Station)
+hist_stations$von_datum
+hist_stations$Stations_id
+
+
+rec_stations = nearbyStations(as.numeric(lat), as.numeric(lon), radius=30,res=c("daily"), var= c("kl"))
+
+,mindate=ifelse(as.integer(substr(Sys.Date(), 1,4)) %in% year, Sys.Date()-2, as.Date(paste0(max(year),"-05-30")))
+
+
 
 precip.cumsum = function(
   id = "01443",
@@ -174,17 +200,17 @@ clima_int_plot = do.call( "rbind",clima_int) %>%
 
 
 
-if(years >2){
+if(length(year) >2){
   n <- length(year)
-  #color_gg = display.brewer.all(n=n, select  = "Set2", type = "qual", colorblindFriendly = T)
-  qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-  col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))[1:n]
-  
-}if(years==2){
+  palette =brewer.pal.info["Set1",] #set1 has no yellow and is seen well on white foreground
+  col_vector = unlist(mapply(brewer.pal, palette$maxcolors, rownames(palette)))[1:n]
+ }else{
+    if(length(years)==2){
   col_vector = c("#7FC97F", "#BEAED4")
-}else{
+    }else{
   col_vector=c("#7FC97F")
-}
+    }
+ }
 
 if(labels==F){
   print(
@@ -197,7 +223,7 @@ if(labels==F){
     scale_x_date(date_breaks = "2 month", date_minor_breaks = "1 month", date_labels = "%b")+
     labs(lty ="Reference",color ="" )+
     theme(text = element_text(size = 6))+
-    theme_light()+
+    theme_bw()+
     xlab("")
       
   ) 
