@@ -1,7 +1,7 @@
 server <- function(input, output, session) {
  
   search_dwd <- eventReactive(input$search, {
-    withProgress(message = 'Generating data', value = 0.14, {
+    withProgress(message = 'Searching nearby stations', value = 0.14, {
     dwd.search(lat = input$lat, lon = input$lon,rad = input$rad, ref = input$ref)
          
       
@@ -11,6 +11,19 @@ server <- function(input, output, session) {
   
     output$search_result <- renderTable({
     search_dwd()
+  })
+    
+      plot_dwd <- eventReactive(input$create_plot, {
+    withProgress(message = 'Generating plot', value = 0.14, {
+    dwd.search(lat = input$lat, lon = input$lon,rad = input$rad, ref = input$ref)
+         
+      
+          
+       })
+  })
+  
+    output$search_result <- renderPlot({
+    plot_dwd()
   })
        
    
