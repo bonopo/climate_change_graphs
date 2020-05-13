@@ -9,7 +9,7 @@ setwd("t:/MAs/rmenke/r_gis_pro/r_projects/data/")
 setwd("C:/Users/Menke/Documents/Uni/R_practice/climate_change_graphs/")
 
 id = "01443";cnp = FALSE;year = c(2019:2020); lat = "48"; lon= "7.51"; ref="ref1"; rad = 50
-
+cnp=1
 
 hist_stations = nearbyStations(as.numeric(lat), as.numeric(lon), radius=50,res=c("daily"), var= c("kl"))
 

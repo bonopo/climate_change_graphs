@@ -8,7 +8,7 @@ check_packages = function(pkg){
 }
 
 # packages 
-check_packages(c("shiny","shinydashboard","shinyjs","shinyBS","ggplot2","scales","lubridate", "geosphere"))
+check_packages(c("shiny","shinydashboard","shinyjs","shinyBS","ggplot2","scales","lubridate", "geosphere", "rdwd","tidyverse", "RCurl", "RColorBrewer"))
 
 #wd
 
@@ -18,24 +18,35 @@ setwd("C:/Users/Menke/Documents/Uni/R_practice/climate_change_graphs/")
 #functions####
 dwd.search = function(lon, lat, rad, ref){
   
-hist_stations = nearbyStations(as.numeric(lat), as.numeric(lon), radius=rad,res=c("daily"), var= c("kl"))
+hist_stations = nearbyStations(as.numeric(lat), as.numeric(lon), radius=rad,res=c("daily"), var= c("kl")) 
+
+
 
 hist_stations_filt = hist_stations %>% 
           mutate(von_datum = ymd(von_datum)) %>% 
           filter(von_datum <= ifelse(ref=="ref1", ymd("1961-01-01"), ymd("1981-01-01"))) %>% 
-  group_by(Stations_id) %>% 
-  summarise(rec_hist = length(per)) %>% 
-  filter(rec_hist ==2) %>% 
-  select(Stations_id)
+          group_by(Stations_id) %>% 
+          summarise(rec_hist = length(per)) %>% 
+          filter(rec_hist ==2) %>% 
+          select(Stations_id)
 
-print_stations = merge(x = hist_stations_filt, y= hist_stations, all.x = T, by= "Stations_id")[,c("Stations_id", "von_datum","bis_datum","Stationshoehe","geoBreite", "geoLaenge", "Stationsname")] %>% distinct()
+print_stations = merge(x = hist_stations_filt, y= hist_stations, all.x = T, by= "Stations_id")[,c("Stations_id", "von_datum","Stationshoehe","geoBreite", "geoLaenge", "Stationsname")] %>% distinct()
 
 print_stations$von_datum = as.character(print_stations$von_datum)
-print_stations$bis_datum = as.character(print_stations$bis_datum)
 print_stations$distance_km = NULL
+
+print_stations$Stations_id = print_stations$Stations_id %>% as.character()
+
 
 for(i in 1:nrow(print_stations)){
   print_stations$distance_km[i] = round(distm(x = c(as.numeric(lon), as.numeric(lat)), y = c(print_stations$geoLaenge[i], print_stations$geoBreite[i]), fun = distHaversine)/1000,0) 
+  
+ if(str_count(print_stations$Stations_id[i]) <4) {
+      print_stations$Stations_id[i] =paste0("00", print_stations$Stations_id[i])
+ }
+   if(str_count(print_stations$Stations_id[i]) <5) {
+      print_stations$Stations_id[i] =paste0("0", print_stations$Stations_id[i])
+  }
 }
 
 
@@ -45,10 +56,10 @@ return(print_stations[c(1:6),])
 }
 
 
-precip.cumsum = function(
-  id = input$id,
-  cnp = input$ref,
-  year = input$year
+dwd.plot = function(
+  id ,
+  cnp ,
+  year
   ){
   
   remove_row =function(data, rows){
@@ -56,6 +67,14 @@ precip.cumsum = function(
     return(result)
   }
   
+  
+  if(cnp == 1){
+    cnp_begin = ymd("19610101")
+    cnp_end = ymd("19901231")
+  }else{
+    cnp_begin = ymd("19810101")
+    cnp_end = ymd("20101231")
+  }
   
 #reducing years to max 5
   
@@ -106,13 +125,13 @@ clima_old = read.csv2(paste0("./extr_data/old/", files[str_detect(files, "produk
 clima_cpl = clima_rec %>% 
   filter(date > clima_old$date %>% tail(.,1)) %>% 
   rbind(clima_old,. ) %>% 
-  select(date, QN_4, RSK) 
+  select(date, QN_4, RSK) %>% 
+  filter(year(date) %in% c(year(cnp_begin):year(cnp_end), year)) 
 
 
 #handling NAs
-error_data = filter(clima_cpl, year(date) %in% c(cnp_begin:cnp_end, year)) 
 print("These are the dates with NAs:")
-print(error_data[which(error_data$RSK < 0 | is.na(error_data$RSK)),])  
+print(clima_cpl[which(clima_cpl$RSK < 0 | is.na(clima_cpl$RSK)),])  
 
 #handling gaps
 time_seq=list()
@@ -151,7 +170,7 @@ clima_int = clima_cpl %>%
 #if not calculating the average rainfall per day will compare different days in those years where there was a leap year. since in the first step the average rainsum per day is calculated. which is then summed up in the 2nd step, this would lead to wrong matching in the average calculation. This is because I use the number of the day in the year (lubridate::yday) to calculate the average. 
 
 clima_leap = clima_cpl %>% 
-  filter(year(date) >= cnp_begin & year(date) < cnp_end+1) %>%
+  filter(date >= cnp_begin & date <= cnp_end) %>%
    mutate(leap_y = leap_year(date), ydy= yday(date)) 
  
 to_be_removed = which(clima_leap$date %in% clima_leap$date[which(clima_leap$leap_y == T & clima_leap$ydy == 60)])
@@ -202,7 +221,7 @@ if(length(year) >2){
   palette =brewer.pal.info["Set1",] #set1 has no yellow and is seen well on white foreground
   col_vector = unlist(mapply(brewer.pal, palette$maxcolors, rownames(palette)))[1:n]
  }else{
-    if(length(years)==2){
+    if(length(year)==2){
   col_vector = c("#7FC97F", "#BEAED4")
     }else{
   col_vector=c("#7FC97F")
@@ -226,5 +245,5 @@ if(length(year) >2){
 }
 
 
- }
+ 
 

@@ -39,11 +39,12 @@ ui = shinyUI(dashboardPage(
         
         selectInput("year", 
                     label = "Which years to compare (max. 5)",
-                    choices = c(1990:2020),
+                    choices = c(2020:1990),
                     multiple =T),
         
        
-        numericInput('id', label="which DWD station you want", value = 1234),
+        textInput('id', label="which DWD station you want", value = 1234,
+                    placeholder = "it must be 4 letters long."),
         
         actionButton('create_plot', 'Create a plot'),
         
