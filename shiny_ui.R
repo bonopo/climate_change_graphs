@@ -43,8 +43,7 @@ ui = shinyUI(dashboardPage(
                     multiple =T),
         
        
-        textInput('id', label="which DWD station you want", value = 1234,
-                    placeholder = "it must be 4 letters long."),
+        textInput('id', label="Station_id of the DWD station", value = "01443"),
         
         actionButton('create_plot', 'Create a plot'),
         

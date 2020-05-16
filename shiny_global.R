@@ -8,7 +8,7 @@ check_packages = function(pkg){
 }
 
 # packages 
-check_packages(c("shiny","shinydashboard","shinyjs","shinyBS","ggplot2","scales","lubridate", "geosphere", "rdwd","tidyverse", "RCurl", "RColorBrewer"))
+check_packages(c("shiny","shinydashboard","shinyjs","shinyBS","ggplot2","scales","lubridate", "geosphere", "rdwd","tidyverse", "RCurl", "RColorBrewer", "shinyalert"))
 
 #wd
 
@@ -16,6 +16,7 @@ setwd("C:/Users/Menke/Documents/Uni/R_practice/climate_change_graphs/")
 
 
 #functions####
+
 dwd.search = function(lon, lat, rad, ref){
   
 hist_stations = nearbyStations(as.numeric(lat), as.numeric(lon), radius=rad,res=c("daily"), var= c("kl")) 
@@ -30,7 +31,7 @@ hist_stations_filt = hist_stations %>%
           filter(rec_hist ==2) %>% 
           select(Stations_id)
 
-print_stations = merge(x = hist_stations_filt, y= hist_stations, all.x = T, by= "Stations_id")[,c("Stations_id", "von_datum","Stationshoehe","geoBreite", "geoLaenge", "Stationsname")] %>% distinct()
+print_stations = merge(x = hist_stations_filt, y= hist_stations, all.x = T, by= "Stations_id")[,c("Stations_id", "von_datum","Stationshoehe","Stationsname")] %>% distinct()
 
 print_stations$von_datum = as.character(print_stations$von_datum)
 print_stations$distance_km = NULL
@@ -49,6 +50,8 @@ for(i in 1:nrow(print_stations)){
   }
 }
 
+colnames(print_stations) = c("Stations_id", "Messungen ab","Stationshoehe [m.ü.N.N.]","Stationsname", "Distanz [km] von Eingabe Koordinaten")
+
 
 
 return(print_stations[c(1:6),])
@@ -59,7 +62,8 @@ return(print_stations[c(1:6),])
 dwd.plot = function(
   id ,
   cnp ,
-  year
+  year , 
+  updateProgress
   ){
   
   remove_row =function(data, rows){
@@ -77,10 +81,21 @@ dwd.plot = function(
   }
   
 #reducing years to max 5
+ year = year[order(as.numeric(year), decreasing = T)] %>% c()
+ 
+ #https://stackoverflow.com/questions/48383010/character-vector-of-length-1-all-but-the-first-element-will-be-ignored-error-whe
+ 
   
-  if(length(year)>4){
-    year= year[1:5] #taking first 5 inputs
-  }
+  if(length(year)>5){
+      year= year[1:5] #taking first 5 inputs
+      years_removed = as.character(year[6:length(year)])
+      showModal(modalDialog(
+          title = "Too many years selected",
+          HTML(paste(years_removed, "will be removed")),
+          easyClose = T,
+          footer = NULL
+      ))  
+      }
   
 #preambel
 do.call(file.remove, list(list.files("./extr_data/rec/", full.names = TRUE)))
@@ -91,7 +106,10 @@ hist_file = NULL
 #downloading recent
 download.file(paste0("ftp://ftp-cdc.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/recent/tageswerte_KL_", id, "_akt.zip"), destfile = "rec.zip",  mode="wb")
 
-
+    if (is.function(updateProgress)) {
+      text <- paste0("Downloading and importing the recent DWD data")
+      updateProgress(detail = text)
+    }
 
 
 unzip("./rec.zip", exdir = "./extr_data/rec")
@@ -108,8 +126,15 @@ filenames = paste(url, strsplit(filenames, "\r*\n")[[1]], sep = "")
 hist_file = grep(as.character(id), filenames) 
   if(is.null(hist_file))
     {
+    shinyalert("Oops!", "Something went wrong.", type = "error")
     stop("No historic Data was found online.")
   }
+
+    if (is.function(updateProgress)) {
+      text <- paste0("Downloading and importing the historic DWD data")
+      updateProgress(detail = text)
+    }
+
 
 download.file(filenames[hist_file], destfile = "old.zip",  mode="wb")
 unzip("./old.zip", exdir = "./extr_data/old")
@@ -126,12 +151,24 @@ clima_cpl = clima_rec %>%
   filter(date > clima_old$date %>% tail(.,1)) %>% 
   rbind(clima_old,. ) %>% 
   select(date, QN_4, RSK) %>% 
-  filter(year(date) %in% c(year(cnp_begin):year(cnp_end), year)) 
+  filter(year(date) %in% c(year(cnp_begin):year(cnp_end), year)) #getting only the relevant period
 
 
 #handling NAs
-print("These are the dates with NAs:")
-print(clima_cpl[which(clima_cpl$RSK < 0 | is.na(clima_cpl$RSK)),])  
+   
+   
+if(length(clima_cpl$RSK < 0) != 0 | length(is.na(clima_cpl$RSK)) != 0){
+  
+  my_nas = clima_cpl[which(clima_cpl$RSK < 0 | is.na(clima_cpl$RSK)),]
+  
+  showModal(modalDialog(
+       title = "These are the dates with NAs:",
+       HTML(paste(apply(my_nas,1,function(x) {paste(x,collapse=': ')}),collapse='<br>')),
+       easyClose = T,
+       footer = NULL
+      ))
+  
+}   
 
 #handling gaps
 time_seq=list()
@@ -140,8 +177,17 @@ for(i in 1:length(year)){
   time_seq[[i]] = data.frame(date = seq.Date(from = dmy(paste0("01-01-", year[i])), to =  ymd(tail(year_int$date,1)), by="day")) #defining ideal time sequence
   if(NROW(time_seq[[i]]) != NROW(year_int)){
     time_check = base::merge(x= year_int, y= time_seq[[i]],  by= "date", all.y =T)
-    print("These are the missing dates")
-    print(time_check[which(is.na(time_check$RSK)),])
+    my_gaps = time_check[which(is.na(time_check$RSK)),]
+    
+    showModal(modalDialog(
+       title = "These are the missing dates",
+       HTML(paste(
+         apply(my_gaps,1,function(x) {paste(x,collapse=': ')}),
+          collapse='<br>')),
+        easyClose = T, 
+        footer = NULL
+      ))
+    
   }
 }
   
@@ -152,14 +198,13 @@ for(i in 1:length(year)){
  clima_cpl$RSK[is.na(clima_cpl$RSK<0)] = 0  
  
  
- year_ordered = year[order(as.numeric(year), decreasing = T)] %>% c()
  clima_int = matrix(nrow = 0, ncol=2) %>% as.data.frame()
 
  #climate data of interest subset
 
 clima_int = clima_cpl %>% 
         mutate(year_date = year(date)) %>% 
-        filter(year_date %in% year_ordered) %>% 
+        filter(year_date %in% year) %>% 
         group_by(year_date) %>% 
         mutate(cs_ns = cumsum(RSK)) %>% 
         dplyr::select(date, year_date, cs_ns) %>% 
@@ -191,9 +236,14 @@ clima_ref =  clima_cpl %>%
   mutate(cum_sum = cumsum(mn_dy_ns)) %>% 
   mutate(date_plot = as.Date(ydy, origin="2000-01-01"))
 
+  if (is.function(updateProgress)) {
+      text <- paste0("Removing leap year and aggregating reference period")
+      updateProgress(detail = text)
+  }
+
 #percentage of rain of what normaly would fall for every table in list of clima_int
 int=c();ratio_precip = c()
-for(i in 1:length(year_ordered)){
+for(i in 1:length(year)){
     if(yday(tail(clima_int[[i]]$date,1)) == 366){ #if the year of interest is a leap year it will always compare it's 'sum-till-today' with the 'sum-till-yesterday' in the reference period.
       int[i] = clima_ref_without_leap$ydy[365] #since the reference is only 365 days
     }else{
@@ -232,7 +282,7 @@ if(length(year) >2){
   
   ggplot(data = clima_int_plot)+
     geom_line(aes(x=date_plot, y= cs_ns, color = as.factor(year_date)))+
-    geom_line(data= clima_ref, aes(x=date_plot, y=cum_sum, lty='Climatological normal'), col="red", lwd=1.4) +
+    geom_line(data= clima_ref, aes(x=date_plot, y=cum_sum, lty=as.character(paste0(year(cnp_begin), "-", year(cnp_end)))), col="red", lwd=1.4) +
     ylab("cumulative precipitaion [mm]")+
     scale_color_manual(values = col_vector)+
     scale_x_date(date_breaks = "2 month", date_minor_breaks = "1 month", date_labels = "%b")+
