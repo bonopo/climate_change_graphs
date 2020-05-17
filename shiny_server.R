@@ -12,7 +12,7 @@ server <- function(input, output, session) {
     )
     
     withProgress(message = 'Searching nearby stations', value = 0.14, {
-    dwd.search(lat = input$lat, lon = input$lon,rad = input$rad, ref = input$ref)
+        dwd.search(lat = input$lat, lon = input$lon,rad = input$rad, ref = input$ref)
          })
   })
   
@@ -54,7 +54,9 @@ server <- function(input, output, session) {
      plot_dwd()
    })
        
-   
+    output$ns_cum_sum_data <- renderTable({
+     plot_dwd()
+   })
 
                 
                 

@@ -8,7 +8,7 @@ check_packages = function(pkg){
 }
 
 # packages 
-check_packages(c("shiny","shinydashboard","shinyjs","shinyBS","ggplot2","scales","lubridate", "geosphere", "rdwd","tidyverse", "RCurl", "RColorBrewer", "shinyalert"))
+check_packages(c("shiny","shinydashboard","shinyjs","shinyBS","ggplot2","scales","lubridate", "geosphere", "rdwd","tidyverse", "RCurl", "RColorBrewer", "shinyalert", "magrittr"))
 
 #wd
 
@@ -22,7 +22,6 @@ dwd.search = function(lon, lat, rad, ref){
 hist_stations = nearbyStations(as.numeric(lat), as.numeric(lon), radius=rad,res=c("daily"), var= c("kl")) 
 
 
-
 hist_stations_filt = hist_stations %>% 
           mutate(von_datum = ymd(von_datum)) %>% 
           filter(von_datum <= ifelse(ref=="ref1", ymd("1961-01-01"), ymd("1981-01-01"))) %>% 
@@ -31,7 +30,7 @@ hist_stations_filt = hist_stations %>%
           filter(rec_hist ==2) %>% 
           select(Stations_id)
 
-print_stations = merge(x = hist_stations_filt, y= hist_stations, all.x = T, by= "Stations_id")[,c("Stations_id", "von_datum","Stationshoehe","Stationsname")] %>% distinct()
+print_stations = merge(x = hist_stations_filt, y= hist_stations, all.x = T, by= "Stations_id")[,c("Stations_id", "von_datum","Stationshoehe","Stationsname", "geoBreite", "geoLaenge")] %>% distinct()
 
 print_stations$von_datum = as.character(print_stations$von_datum)
 print_stations$distance_km = NULL
@@ -49,8 +48,13 @@ for(i in 1:nrow(print_stations)){
       print_stations$Stations_id[i] =paste0("0", print_stations$Stations_id[i])
   }
 }
+print_stations %<>% select(-geoBreite, -geoLaenge) 
+print_stations %<>% .[order(print_stations$distance_km),]
+print_stations$distance_km %<>% round(.,0) 
 
 colnames(print_stations) = c("Stations_id", "Messungen ab","Stationshoehe [m.ü.N.N.]","Stationsname", "Distanz [km] von Eingabe Koordinaten")
+
+
 
 
 
@@ -58,6 +62,7 @@ return(print_stations[c(1:6),])
 
 }
 
+# id="01443"; cnp=1;year=2020
 
 dwd.plot = function(
   id ,
@@ -157,7 +162,7 @@ clima_cpl = clima_rec %>%
 #handling NAs
    
    
-if(length(clima_cpl$RSK < 0) != 0 | length(is.na(clima_cpl$RSK)) != 0){
+if(any(isTRUE(clima_cpl$RSK < 0)) | any(is.na(clima_cpl$RSK))){
   
   my_nas = clima_cpl[which(clima_cpl$RSK < 0 | is.na(clima_cpl$RSK)),]
   
@@ -170,7 +175,7 @@ if(length(clima_cpl$RSK < 0) != 0 | length(is.na(clima_cpl$RSK)) != 0){
   
 }   
 
-#handling gaps
+#handling gaps####
 time_seq=list()
 for(i in 1:length(year)){
   year_int = clima_cpl %>% filter(year[i] ==year(date)) #year to check for completeness
@@ -210,62 +215,27 @@ clima_int = clima_cpl %>%
         dplyr::select(date, year_date, cs_ns) %>% 
         group_split()
  
-#reference year 
-#removing leap year in reference years
-#if not calculating the average rainfall per day will compare different days in those years where there was a leap year. since in the first step the average rainsum per day is calculated. which is then summed up in the 2nd step, this would lead to wrong matching in the average calculation. This is because I use the number of the day in the year (lubridate::yday) to calculate the average. 
-
-clima_leap = clima_cpl %>% 
-  filter(date >= cnp_begin & date <= cnp_end) %>%
-   mutate(leap_y = leap_year(date), ydy= yday(date)) 
- 
-to_be_removed = which(clima_leap$date %in% clima_leap$date[which(clima_leap$leap_y == T & clima_leap$ydy == 60)])
-clima_ref_without_leap = remove_row(clima_leap, to_be_removed) %>% 
-  group_by(year(date)) %>% 
-  mutate(ydy = 1:365) %>% #if not the leap years will still have 366 as the yday
-  ungroup() %>%  
-  group_by(ydy) %>%  
-  summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>% 
-  mutate(cum_sum = cumsum(mn_dy_ns)) 
-
-
-clima_ref =  clima_cpl %>% 
-  filter(year(date) >= cnp_begin & year(date) < cnp_end+1) %>%
-  mutate(ydy = yday(date)) %>% 
-  group_by(ydy) %>%  
-  summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>% 
-  mutate(cum_sum = cumsum(mn_dy_ns)) %>% 
-  mutate(date_plot = as.Date(ydy, origin="2000-01-01"))
+#climate data of reference period (including 29. February in reference)
+clima_ref = clima_cpl %>%
+  filter(date >= cnp_begin & date <= cnp_end)  %>% 
+  mutate(date_plot = dmy(paste0(day(date), "-", month(date), "-2000"))) %>% 
+  group_by(date_plot) %>%
+  summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>%
+  mutate(cum_sum = cumsum(mn_dy_ns), ydy = yday(date_plot))
 
   if (is.function(updateProgress)) {
       text <- paste0("Removing leap year and aggregating reference period")
       updateProgress(detail = text)
   }
 
-#percentage of rain of what normaly would fall for every table in list of clima_int
-int=c();ratio_precip = c()
-for(i in 1:length(year)){
-    if(yday(tail(clima_int[[i]]$date,1)) == 366){ #if the year of interest is a leap year it will always compare it's 'sum-till-today' with the 'sum-till-yesterday' in the reference period.
-      int[i] = clima_ref_without_leap$ydy[365] #since the reference is only 365 days
-    }else{
-    int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref_without_leap$ydy)
-    }
-  
- 
-    if(is.numeric(int[i])){
-      ratio_precip[i] = (clima_int[[i]]$cs_ns[int[i]]/clima_ref_without_leap$cum_sum[int[i]]) *100
-    }else{
-      ratio_precip[i] = NA
-    }
-}
-
-#plotting
+#data for plots
 clima_int_plot = do.call( "rbind",clima_int) %>% 
   mutate(ydy = yday(ymd(date)),
          date_plot = ymd(paste0("2000-",month(date), "-", day(date)))) %>% 
   dplyr::select(ydy, year_date, date_plot, cs_ns) %>% as.tbl
 
 
-
+#setting colors
 if(length(year) >2){
   n <- length(year)
   palette =brewer.pal.info["Set1",] #set1 has no yellow and is seen well on white foreground
@@ -292,8 +262,50 @@ if(length(year) >2){
     xlab("")
       
   ) 
+  
+  #percentage of rain####
+  #output as table
+  
+ 
+  #percentage of rain of what normaly would fall for every table in list of clima_int
+int=c();ratio_precip = c();absolute_ref=c();absolute_int=c()
+for(i in 1:length(year)){
+    int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref$ydy)
+    
+    if(is.numeric(int[i])){
+      ratio_precip[i] = round((clima_int[[i]]$cs_ns[int[i]]/clima_ref$cum_sum[int[i]]) *100,0)
+      absolute_ref[i] = clima_ref$cum_sum[int[i]]
+      absolute_int[i] = clima_int[[i]]$cs_ns[int[i]]
+    }else{
+      ratio_precip[i] = NA
+      absolute_ref[i] = NA
+      absolute_int[i] = NA
+    }
+}
+  
+  #creating table
+  
+  percent_res = data.frame(year=year,
+                           percent = ratio_precip,
+                           ref = absolute_ref,
+                           int=absolute_int)
+  
+  colnames(percent_res) = c("Year",
+                            "difference [%]",
+                            "reference sum [mm]",
+                            "actual sum [mm]")
+  
+  return(percent_res)
 }
 
+
+#monthly anamolies
+
+# monthly.plot = function(
+#   ref,
+#   var,
+#   year
+# )
 
  
 
