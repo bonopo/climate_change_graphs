@@ -7,6 +7,12 @@ check_packages = function(pkg){
     sapply(pkg, require, character.only=T)
 }
 
+  remove_row =function(data, rows){
+    result = data[-c(rows),]
+    return(result)
+  }
+  
+
 # packages 
 check_packages(c("shiny","shinydashboard","shinyjs","shinyBS","ggplot2","scales","lubridate", "geosphere", "rdwd","tidyverse", "RCurl", "RColorBrewer", "shinyalert", "magrittr"))
 
@@ -71,11 +77,7 @@ dwd.plot = function(
   updateProgress
   ){
   
-  remove_row =function(data, rows){
-    result = data[-c(rows),]
-    return(result)
-  }
-  
+
   
   if(cnp == 1){
     cnp_begin = ymd("19610101")
@@ -299,13 +301,241 @@ for(i in 1:length(year)){
 }
 
 
-#monthly anamolies
+#monthly anamolies ####
 
-# monthly.plot = function(
-#   ref,
-#   var,
-#   year
-# )
+monthly.plot = function(
+  id,
+  cnp,
+  year, 
+  updateProgress
+  ){
+  
+  if(cnp == 1){
+    cnp_begin = ymd("19610101")
+    cnp_end = ymd("19901231")
+  }else{
+    cnp_begin = ymd("19810101")
+    cnp_end = ymd("20101231")
+  }
+  
+  #preambel
+do.call(file.remove, list(list.files("./extr_data/rec/", full.names = TRUE)))
+do.call(file.remove, list(list.files("./extr_data/old/", full.names = TRUE)))
+hist_file = NULL
+
+
+#downloading recent
+download.file(paste0("ftp://ftp-cdc.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/recent/tageswerte_KL_", id, "_akt.zip"), destfile = "rec.zip",  mode="wb")
+
+    if (is.function(updateProgress)) {
+      text <- paste0("Downloading and importing the recent DWD data")
+      updateProgress(detail = text)
+    }
+
+
+unzip("./rec.zip", exdir = "./extr_data/rec")
+
+#importing recent
+files= list.files("./extr_data/rec")
+clima_rec = read.csv2(paste0("./extr_data/rec/", files[str_detect(files, "produkt") %>% which()]), na.strings = "-999", fill=F, sep=";", dec=".")%>% 
+  mutate(date=ymd(MESS_DATUM))
+
+#downloading historic
+url <- "ftp://ftp-cdc.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/historical/"
+filenames <- getURL(url,ftp.use.epsv = FALSE,dirlistonly = TRUE) 
+filenames = paste(url, strsplit(filenames, "\r*\n")[[1]], sep = "")
+hist_file = grep(as.character(id), filenames) 
+  if(is.null(hist_file))
+    {
+    shinyalert("Oops!", "Something went wrong.", type = "error")
+    stop("No historic Data was found online.")
+  }
+
+    if (is.function(updateProgress)) {
+      text <- paste0("Downloading and importing the historic DWD data")
+      updateProgress(detail = text)
+    }
+
+
+download.file(filenames[hist_file], destfile = "old.zip",  mode="wb")
+unzip("./old.zip", exdir = "./extr_data/old")
+
+#importing historic
+files= list.files("./extr_data/old")
+clima_old = read.csv2(paste0("./extr_data/old/", files[str_detect(files, "produkt") %>% which()]), na.strings = "-999", fill=F, sep=";", dec=".") %>% 
+  mutate(date=ymd(MESS_DATUM))
+
+#rbinding the two df together
+#correcting date for merging
+
+clima_cpl = clima_rec %>% 
+  filter(date > clima_old$date %>% tail(.,1)) %>% 
+  rbind(clima_old,. ) %>% 
+  select(date, QN_4, RSK, TMK) %>% 
+  filter(year(date) %in% c(year(cnp_begin):year(cnp_end), year)) #getting only the relevant period
+
+
+#handling NAs
+   
+   
+if(any(isTRUE(clima_cpl$RSK < 0)) | any(is.na(clima_cpl$RSK))){
+  
+  my_nas = clima_cpl[which(clima_cpl$RSK < 0 | is.na(clima_cpl$RSK)),]
+  
+  showModal(modalDialog(
+       title = "These are the dates with NAs:",
+       HTML(paste(apply(my_nas,1,function(x) {paste(x,collapse=': ')}),collapse='<br>')),
+       easyClose = T,
+       footer = NULL
+      ))
+  
+}   
+
+#handling gaps####
+time_seq=list()
+
+  year_int = clima_cpl %>% filter(year == year(date)) #year to check for completeness
+  time_seq = data.frame(date = seq.Date(from = dmy(paste0("01-01-", year)), to =  ymd(tail(year_int$date,1)), by="day")) #defining ideal time sequence
+  if(NROW(time_seq) != NROW(year_int)){
+    time_check = base::merge(x= year_int, y= time_seq[[i]],  by= "date", all.y =T)
+    my_gaps = time_check[which(is.na(time_check$RSK)),]
+    
+    showModal(modalDialog(
+       title = "These are the missing dates",
+       HTML(paste(
+         apply(my_gaps,1,function(x) {paste(x,collapse=': ')}),
+          collapse='<br>')),
+        easyClose = T, 
+        footer = NULL
+      ))
+    
+  }
+  
+
+  return(list(clima_cpl, year, cnp))
+  
+}
+
+precip.plot = function(data_list){
+  
+  data = data_list[[1]]
+  year = data_list[[2]]  
+  cnp  = data_list[[3]]
+  
+  if(cnp == 1){
+    cnp_begin = ymd("19610101")
+    cnp_end = ymd("19901231")
+  }else{
+    cnp_begin = ymd("19810101")
+    cnp_end = ymd("20101231")
+  }
+  
+  #period of interest
+  
+  clima_int = data %>% 
+        filter(year(date) == year) %>% 
+        group_by(month = month(date)) %>% 
+        summarise(monthly_sum = sum(RSK)) 
+ 
+#climate data of reference period (including 29. February in reference)
+clima_ref = data %>%
+  filter(date >= cnp_begin & date <= cnp_end)  %>% 
+  mutate(month_year = dmy(paste0("15-", month(date), "-" , year(date)))) %>% 
+  group_by(month_year) %>% 
+  summarise(sum = sum(RSK)) %>% 
+  mutate(month =  month(month_year)) %>%
+  group_by(month) %>% 
+  summarise(month_ref = mean(sum))
+  
+
+
+
+#data for plots
+clima_merge = merge(x= clima_ref, y = clima_int, by="month", all.y=T) %>% 
+  mutate(plot_date = dmy(paste0("15-", month, "-", year))) %>% select(-month)
+  
+   
+clima_int_plot = clima_merge %>% 
+  gather(key = "key", value="mm",-plot_date)
+  
+diff=  clima_merge %>%  mutate(diff = round(( 100*((monthly_sum/month_ref)-1)),0)) %>% 
+  mutate(y = ifelse(month_ref>monthly_sum, month_ref, monthly_sum)) %>% 
+  mutate(diff = ifelse(diff>0, paste0("+",diff), diff)) %>% 
+  mutate(x_ref = plot_date-7, x_int = plot_date+7)
+
+print(
+ggplot(clima_int_plot)+
+  geom_bar(aes(x=plot_date, y = mm, alpha = key),  stat = "identity", position = "dodge")+
+   geom_text(data = diff,aes(x = plot_date, y= y+5, label=paste0(diff,"%")), color="red",
+           position = position_dodge(0.9), size=3.5)+
+  theme_bw()+
+  scale_alpha_manual("",values=c(1,.5),label=c(year,"Referenz"))+
+  scale_x_date("", breaks = seq(as.Date(diff$plot_date[1]), as.Date(diff$plot_date[nrow(diff)]), by="1 month"), date_labels = "%b")+
+  geom_text(data = diff,aes(x= x_int, y = 0.5*monthly_sum, label=round(monthly_sum,0)), col="black")+
+  geom_text(data = diff,aes(x= x_ref, y = 0.5*month_ref, label=round(month_ref,0)), col="black")
+)
+}
+
+
+#temperature anomalies####
+
+temp.plot = function(data_list){
+  
+  data = data_list[[1]]
+  year = data_list[[2]]  
+  cnp = data_list[[3]]
+  
+  if(cnp == 1){
+    cnp_begin = ymd("19610101")
+    cnp_end = ymd("19901231")
+  }else{
+    cnp_begin = ymd("19810101")
+    cnp_end = ymd("20101231")
+  }
+  
+  #period of interest
+  
+  clima_int = data %>% 
+        filter(year(date) == year) %>% 
+        group_by(month = month(date)) %>% 
+        summarise(interest = mean(TMK)) 
+ 
+#climate data of reference period (including 29. February in reference)
+clima_ref = data %>%
+  filter(date >= cnp_begin & date <= cnp_end)  %>% 
+  group_by(month = month(date)) %>% 
+  summarise(reference = mean(TMK)) 
+
+  
+
+
+#data for plots
+clima_merge = merge(x= clima_ref, y = clima_int, by="month", all.y=T) %>% 
+  mutate(plot_date = dmy(paste0("15-", month, "-", year))) %>% select(-month)
+  
+clima_int_plot = clima_merge %>% 
+  gather(key = "key", value="temperature",-plot_date)
+  
+diff=  clima_merge %>%  mutate(diff = round(( 100*((interest/reference)-1)),0)) %>% 
+  mutate(y = ifelse(reference>interest, reference, interest)) %>% 
+  mutate(diff = ifelse(diff>0, paste0("+",diff), diff)) %>% 
+  mutate(x_ref = plot_date-7, x_int = plot_date+7)
+
+
+print(
+ggplot(clima_int_plot)+
+  geom_bar(aes(x=plot_date, y = temperature, alpha = key),  stat = "identity", position = "dodge")+
+   geom_text(data = diff,aes(x = plot_date, y= y+1, label=paste0(diff,"%")), color="red",
+           position = position_dodge(0.9), size=3.5)+
+  theme_bw()+
+  scale_alpha_manual("",values=c(1,.5),label=c(year,"Referenz"))+
+  scale_x_date("", breaks = seq(as.Date(diff$plot_date[1]), as.Date(diff$plot_date[nrow(diff)]), by="1 month"), date_labels = "%b")+
+  geom_text(data = diff,aes(x= x_int, y = 0.5*interest, label=round(interest,0)), col="black")+
+  geom_text(data = diff,aes(x= x_ref, y = 0.5*reference, label=round(reference,0)), col="black")
+)
+
+}
+
 
  
 

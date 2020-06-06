@@ -19,11 +19,14 @@ server <- function(input, output, session) {
   output$search_result <- renderTable({
     search_dwd()
     })
+  
+  #cumsum plot ####
     
   plot_dwd <- eventReactive(input$create_plot, {
     
     validate(
       need(input$year != "", "Please select a year"),
+      need(input$ref != "", "Please select a refence period"),
       need(input$id != "", "Please select a Station id")
       
     )
@@ -60,9 +63,48 @@ server <- function(input, output, session) {
 
                 
                 
- # output$ns_cum_sum <- renderPlot({input$ns_cum_sum})
-   
+ # monthly anomalies ####
+  monthly_anomalies <- eventReactive(input$create_plot_anomalie, {
+    
+    validate(
+      need(input$year_anomalie != "", "Please select a year"),
+      need(input$ref_anomalie != "", "Please select a refence period"),
+      need(input$id_anomalie != "", "Please select a Station id")
+      
+    )
+    
   
+      
+    
+    progress = Progress$new()
+    progress$set(message = "plotting", value=0)
+    
+    on.exit(progress$close())
+    
+    updateProgress <- function(value = NULL, detail = NULL) {
+      if (is.null(value)) {
+        value <- progress$getValue()
+        value <- value + (progress$getMax() - value) / 5
+      }
+      progress$set(value = value, detail = detail)
+    }
+    
+    
+     monthly.plot(id = input$id_anomalie, year = input$year_anomalie, cnp = input$ref_anomalie, updateProgress)
+   
+  }) 
+   
+   output$anomalies <- renderPlot({
+     precip.plot(monthly_anomalies())
+   })
+
+      output$anomalies2 <- renderPlot({
+     temp.plot(monthly_anomalies())
+   })
+     
+  
+
+    
 }
 
 
