@@ -22,7 +22,7 @@ server <- function(input, output, session) {
   
   #cumsum plot ####
     
-  plot_dwd <- eventReactive(input$create_plot, {
+  dwd.cs.data <- eventReactive(input$create_plot, {
     
     validate(
       need(input$year != "", "Please select a year"),
@@ -48,17 +48,18 @@ server <- function(input, output, session) {
     }
     
     
-    #withProgress(message = 'Generating plot', value = 0.14, {
      dwd.plot(id = input$id, year = input$year, cnp = input$ref, updateProgress)
-   #  })
+
    })
    
-   output$ns_cum_sum_plot <- renderPlot({
-     plot_dwd()
-   })
+  # output$ns_cum_sum_plot <- renderPlot({
+     
+ #    plot.cs(dwd.cs.data())
+     
+ #  })
        
     output$ns_cum_sum_data <- renderTable({
-     plot_dwd()
+     table.cs(dwd.cs.data())
    })
 
                 

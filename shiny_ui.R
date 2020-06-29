@@ -62,9 +62,9 @@ ui = shinyUI(dashboardPage(
         
         plotOutput("ns_cum_sum_plot"),
         
-        tableOutput("ns_cum_sum_data"),
+        tableOutput("ns_cum_sum_data")
         
-        actionButton('download', 'Download the plot')
+        #actionButton('download', 'Download the plot')
         
         
         )),
@@ -90,9 +90,9 @@ ui = shinyUI(dashboardPage(
         
         plotOutput("anomalies"),
         
-        plotOutput("anomalies2"),
+        plotOutput("anomalies2")
         
-       actionButton('download_anomalies', 'Download the plot')
+       #actionButton('download_anomalies', 'Download the plot')
         
         
         ))

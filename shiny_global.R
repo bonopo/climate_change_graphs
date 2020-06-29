@@ -68,9 +68,9 @@ return(print_stations[c(1:6),])
 
 }
 
-# id="01443"; cnp=1;year=2020
+# id="01443"; cnp=1;year=c(2020, 2019)
 
-dwd.plot = function(
+dwd.cs.data = function(
   id ,
   cnp ,
   year , 
@@ -88,7 +88,7 @@ dwd.plot = function(
   }
   
 #reducing years to max 5
- year = year[order(as.numeric(year), decreasing = T)] %>% c()
+ year = year[order(as.numeric(year), decreasing = F)] %>% c()
  
  #https://stackoverflow.com/questions/48383010/character-vector-of-length-1-all-but-the-first-element-will-be-ignored-error-whe
  
@@ -197,6 +197,12 @@ for(i in 1:length(year)){
     
   }
 }
+
+  if(is.function(updateProgress)){
+      text <- paste0("Removing leap year and aggregating reference period")
+      updateProgress(detail = text)
+  }
+  
   
 
 #no NAs (if not error) the NA have to defined as 0
@@ -205,17 +211,43 @@ for(i in 1:length(year)){
  clima_cpl$RSK[is.na(clima_cpl$RSK<0)] = 0  
  
  
- clima_int = matrix(nrow = 0, ncol=2) %>% as.data.frame()
+ 
+
+  return(list(clima_cpl, year, cnp))
+  #res= list(clima_cpl, year, cnp)
+}
+
+
+#res = list(clima_cpl,year, cnp)
+#data_list = res
+
+
+
+plot.cs = function(data_list){
+  clima_cpl = data_list[[1]] %>% as_tibble() %>% mutate(date= ymd(date))
+  year = data_list[[2]] 
+  cnp  = data_list[[3]]
+  
+  
+  if(cnp == 1){
+    cnp_begin = ymd("19610101")
+    cnp_end = ymd("19901231")
+  }else{
+    cnp_begin = ymd("19810101")
+    cnp_end = ymd("20101231")
+  }
+  
+  clima_int = matrix(nrow = 0, ncol=2) %>% as.data.frame()
 
  #climate data of interest subset
 
 clima_int = clima_cpl %>% 
-        mutate(year_date = year(date)) %>% 
-        filter(year_date %in% year) %>% 
-        group_by(year_date) %>% 
-        mutate(cs_ns = cumsum(RSK)) %>% 
-        dplyr::select(date, year_date, cs_ns) %>% 
-        group_split()
+              mutate(year_date = year(date)) %>% 
+              filter(year_date %in% year) %>% 
+              group_by(year_date) %>% 
+              mutate(cs_ns = cumsum(RSK)) %>% 
+              dplyr::select(date, year_date, cs_ns) %>% 
+              group_split()
  
 #climate data of reference period (including 29. February in reference)
 clima_ref = clima_cpl %>%
@@ -225,16 +257,12 @@ clima_ref = clima_cpl %>%
   summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>%
   mutate(cum_sum = cumsum(mn_dy_ns), ydy = yday(date_plot))
 
-  if (is.function(updateProgress)) {
-      text <- paste0("Removing leap year and aggregating reference period")
-      updateProgress(detail = text)
-  }
 
-#data for plots
-clima_int_plot = do.call( "rbind",clima_int) %>% 
-  mutate(ydy = yday(ymd(date)),
-         date_plot = ymd(paste0("2000-",month(date), "-", day(date)))) %>% 
-  dplyr::select(ydy, year_date, date_plot, cs_ns) %>% as.tbl
+  #data for plots
+clima_int_plot = do.call("rbind",clima_int) %>% 
+      mutate(ydy = yday(ymd(date)),
+             date_plot = ymd(paste0("2000-",month(date), "-", day(date)))) %>% 
+      dplyr::select(ydy, year_date, date_plot, cs_ns) %>% as.tbl
 
 
 #setting colors
@@ -265,13 +293,52 @@ if(length(year) >2){
       
   ) 
   
+}
+
+  
   #percentage of rain####
   #output as table
   
+ table.cs = function(data_list){
+  
+  clima_cpl = data_list[[1]] %>% as.data.frame() %>% mutate(date= ymd(date))
+  cnp  = data_list[[3]]
+  year = data_list[[2]] 
+
+  if(cnp == 1){
+    cnp_begin = ymd("19610101")
+    cnp_end = ymd("19901231")
+  }else{
+    cnp_begin = ymd("19810101")
+    cnp_end = ymd("20101231")
+  }
+  
+  clima_int = matrix(nrow = 0, ncol=2) %>% as.data.frame()
+
+ #climate data of interest subset
+
+clima_int = clima_cpl %>% 
+              mutate(year_date = year(date)) %>% 
+              filter(year_date %in% year) %>% 
+              group_by(year_date) %>% 
+              mutate(cs_ns = cumsum(RSK)) %>% 
+              dplyr::select(date, year_date, cs_ns) %>% 
+              group_split()
  
+#climate data of reference period (including 29. February in reference)
+clima_ref = clima_cpl %>%
+  filter(date >= cnp_begin & date <= cnp_end)  %>% 
+  mutate(date_plot = dmy(paste0(day(date), "-", month(date), "-2000"))) %>% 
+  group_by(date_plot) %>%
+  summarise(mn_dy_ns = mean(RSK, na.rm=T)) %>%
+  mutate(cum_sum = cumsum(mn_dy_ns), ydy = yday(date_plot))
+  
+
+  
+   
   #percentage of rain of what normaly would fall for every table in list of clima_int
 int=c();ratio_precip = c();absolute_ref=c();absolute_int=c()
-for(i in 1:length(year)){
+for(i in 1:length(year)){ 
     int[i] = which(yday(tail(clima_int[[i]]$date,1)) == clima_ref$ydy)
     
     if(is.numeric(int[i])){
@@ -287,7 +354,7 @@ for(i in 1:length(year)){
   
   #creating table
   
-  percent_res = data.frame(year=year,
+  percent_res = data.frame(year=year, 
                            percent = ratio_precip,
                            ref = absolute_ref,
                            int=absolute_int)
@@ -299,7 +366,7 @@ for(i in 1:length(year)){
   
   return(percent_res)
 }
-
+   
 
 #monthly anamolies ####
 
@@ -416,6 +483,8 @@ time_seq=list()
   
 }
 
+#data = clima_cpl
+
 precip.plot = function(data_list){
   
   data = data_list[[1]]
@@ -448,35 +517,33 @@ clima_ref = data %>%
   summarise(month_ref = mean(sum))
   
 
-
-
 #data for plots
 clima_merge = merge(x= clima_ref, y = clima_int, by="month", all.y=T) %>% 
   mutate(plot_date = dmy(paste0("15-", month, "-", year))) %>% select(-month)
   
-   
 clima_int_plot = clima_merge %>% 
   gather(key = "key", value="mm",-plot_date)
   
-diff=  clima_merge %>%  mutate(diff = round(( 100*((monthly_sum/month_ref)-1)),0)) %>% 
-  mutate(y = ifelse(month_ref>monthly_sum, month_ref, monthly_sum)) %>% 
-  mutate(diff = ifelse(diff>0, paste0("+",diff), diff)) %>% 
-  mutate(x_ref = plot_date-7, x_int = plot_date+7)
+diff =  clima_merge %>% 
+            mutate(diff = round(( 100*((monthly_sum/month_ref)-1)),0)) %>% 
+            mutate(y = ifelse(month_ref>monthly_sum, month_ref, monthly_sum)) %>% 
+            mutate(diff = ifelse(diff>0, paste0("+",diff), diff)) %>% 
+            mutate(x_ref = plot_date-7, x_int = plot_date+7)
 
 print(
 ggplot(clima_int_plot)+
-  geom_bar(aes(x=plot_date, y = mm, alpha = key),  stat = "identity", position = "dodge")+
-   geom_text(data = diff,aes(x = plot_date, y= y+5, label=paste0(diff,"%")), color="red",
-           position = position_dodge(0.9), size=3.5)+
+  geom_bar(aes(x=plot_date, y = mm, alpha = key),  stat = "identity", position = "dodge", fill="cadetblue")+
+   geom_text(data = diff,aes(x = plot_date, y= y+5, label=paste0(diff,"%")), color="red",  position = position_dodge(0.9), size=3.5)+
   theme_bw()+
-  scale_alpha_manual("",values=c(1,.5),label=c(year,"Referenz"))+
+  scale_alpha_manual("",values=c(.5,1),label=c("Referenz",year))+
   scale_x_date("", breaks = seq(as.Date(diff$plot_date[1]), as.Date(diff$plot_date[nrow(diff)]), by="1 month"), date_labels = "%b")+
   geom_text(data = diff,aes(x= x_int, y = 0.5*monthly_sum, label=round(monthly_sum,0)), col="black")+
-  geom_text(data = diff,aes(x= x_ref, y = 0.5*month_ref, label=round(month_ref,0)), col="black")
+  geom_text(data = diff,aes(x= x_ref, y = 0.5*month_ref, label=round(month_ref,0)), col="black")+
+  ylab("precipitation sum [mm/month]")
 )
 }
 
-
+#data = clima_cpl
 #temperature anomalies####
 
 temp.plot = function(data_list){
@@ -500,39 +567,53 @@ temp.plot = function(data_list){
         group_by(month = month(date)) %>% 
         summarise(interest = mean(TMK)) 
  
-#climate data of reference period (including 29. February in reference)
-clima_ref = data %>%
-  filter(date >= cnp_begin & date <= cnp_end)  %>% 
-  group_by(month = month(date)) %>% 
-  summarise(reference = mean(TMK)) 
+  #climate data of reference period (including 29. February in reference)
+  clima_ref = data %>%
+        filter(date >= cnp_begin & date <= cnp_end)  %>% 
+        group_by(month = month(date)) %>% 
+        summarise(month_ref = mean(TMK)) 
 
-  
+  #data for plots
+    clima_merge = merge(x= clima_ref, y = clima_int, by="month", all.y=T) %>% 
+        mutate(plot_date = dmy(paste0("15-", month, "-", year))) %>%
+        select(-month) 
+    
+    colnames(clima_merge) = c("a_reference", "b_interest", "plot_date") #to change order of plotting need to change alpabetic order of the names
+      
+       
+    clima_int_plot = clima_merge %>% 
+      gather(key = "key", value="mm",-plot_date)
+      
+    diff=  clima_merge %>%
+              mutate(diff = round(( 100*((b_interest/a_reference)-1)),0)) %>% 
+              mutate(y = ifelse(a_reference>b_interest, a_reference, b_interest)) %>% 
+              mutate(diff = ifelse(diff>0, paste0("+",diff), diff)) %>% 
+              mutate(x_int = plot_date-7, x_ref = plot_date+7)
+    
+    print(
+        ggplot(clima_int_plot)+
+          geom_bar(aes(x=plot_date, y = mm, alpha = key),
+                   stat = "identity", position = "dodge", fill="brown1")+
+          geom_text(data = diff, 
+                    aes(x = plot_date, y= y+1, label=paste0(diff,"%")),
+                    color="red",  position = position_dodge(0.9), size=3.5)+
+          theme_bw()+
+          scale_alpha_manual("",values=c(.5,1),label=c("Referenz",year))+
+          scale_x_date("",
+                       breaks = seq(as.Date(diff$plot_date[1]),
+                                    as.Date(diff$plot_date[nrow(diff)]), by="1 month"),
+                       date_labels = "%b")+
+          geom_text(data = diff,aes(x= x_int,
+                                    y = 0.5*b_interest,
+                                    label=round(b_interest,0)),
+                      col="black")+
+          geom_text(data = diff,
+                    aes(x= x_ref, y = 0.5*a_reference, label=round(a_reference,0)),
+                    col="black")+
+          ylab("mean monthly temperature [°C]")
+    )
+    
 
-
-#data for plots
-clima_merge = merge(x= clima_ref, y = clima_int, by="month", all.y=T) %>% 
-  mutate(plot_date = dmy(paste0("15-", month, "-", year))) %>% select(-month)
-  
-clima_int_plot = clima_merge %>% 
-  gather(key = "key", value="temperature",-plot_date)
-  
-diff=  clima_merge %>%  mutate(diff = round(( 100*((interest/reference)-1)),0)) %>% 
-  mutate(y = ifelse(reference>interest, reference, interest)) %>% 
-  mutate(diff = ifelse(diff>0, paste0("+",diff), diff)) %>% 
-  mutate(x_ref = plot_date-7, x_int = plot_date+7)
-
-
-print(
-ggplot(clima_int_plot)+
-  geom_bar(aes(x=plot_date, y = temperature, alpha = key),  stat = "identity", position = "dodge")+
-   geom_text(data = diff,aes(x = plot_date, y= y+1, label=paste0(diff,"%")), color="red",
-           position = position_dodge(0.9), size=3.5)+
-  theme_bw()+
-  scale_alpha_manual("",values=c(1,.5),label=c(year,"Referenz"))+
-  scale_x_date("", breaks = seq(as.Date(diff$plot_date[1]), as.Date(diff$plot_date[nrow(diff)]), by="1 month"), date_labels = "%b")+
-  geom_text(data = diff,aes(x= x_int, y = 0.5*interest, label=round(interest,0)), col="black")+
-  geom_text(data = diff,aes(x= x_ref, y = 0.5*reference, label=round(reference,0)), col="black")
-)
 
 }
 
