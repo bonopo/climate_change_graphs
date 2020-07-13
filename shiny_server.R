@@ -8,7 +8,7 @@ server <- function(input, output, session) {
       need(input$rad != "", "Please enter a radius"),
       need(input$ref != "", "Please choose a reference period")
 
-      
+       
     )
     
     withProgress(message = 'Searching nearby stations', value = 0.14, {
@@ -22,7 +22,7 @@ server <- function(input, output, session) {
   
   #cumsum plot ####
     
-  dwd.cs.data <- eventReactive(input$create_plot, {
+  dwd_data <- eventReactive(input$create_plot, {
     
     validate(
       need(input$year != "", "Please select a year"),
@@ -48,19 +48,17 @@ server <- function(input, output, session) {
     }
     
     
-     dwd.plot(id = input$id, year = input$year, cnp = input$ref, updateProgress)
+     dwd.cs.data(id = input$id, year = input$year, cnp = input$ref, updateProgress)
 
    })
-   
-  # output$ns_cum_sum_plot <- renderPlot({
-     
- #    plot.cs(dwd.cs.data())
-     
- #  })
+  
+    output$ns_cum_sum_plot <- renderPlot({
+      plot.cs(dwd_data())
+    })
        
     output$ns_cum_sum_data <- renderTable({
-     table.cs(dwd.cs.data())
-   })
+      table.cs(dwd_data())
+    })
 
                 
                 

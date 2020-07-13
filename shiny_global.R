@@ -1,5 +1,5 @@
 #preamble####
-
+##
 check_packages = function(pkg){
   new.pkg = pkg[!(pkg %in% installed.packages()[,"Package"])]
   if(length(new.pkg))
@@ -224,7 +224,7 @@ for(i in 1:length(year)){
 
 
 plot.cs = function(data_list){
-  clima_cpl = data_list[[1]] %>% as_tibble() %>% mutate(date= ymd(date))
+  clima_cpl = data_list[[1]] 
   year = data_list[[2]] 
   cnp  = data_list[[3]]
   
@@ -301,7 +301,7 @@ if(length(year) >2){
   
  table.cs = function(data_list){
   
-  clima_cpl = data_list[[1]] %>% as.data.frame() %>% mutate(date= ymd(date))
+  clima_cpl = data_list[[1]] 
   cnp  = data_list[[3]]
   year = data_list[[2]] 
 
