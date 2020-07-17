@@ -1,7 +1,16 @@
-# precipitation anomalies for a certain year x -------------------
-#
-# input: list of monthly.plot function in get_dwd_for_anomalies.R script
-# output: ggplot barplot of the year x of precipitation anomalies for year x and station x
+#' @title precipitation anomalies for a certain year
+#' @description FUNCTION_DESCRIPTION
+#' @param data_list list of monthly.plot function in get_dwd_for_anomalies.R script
+#' @return ggplot barplot of the year x of precipitation anomalies for year x and station x
+#' @details DETAILS
+#' @examples
+#' \dontrun{
+#' if(interactive()){
+#'  #EXAMPLE1
+#'  }
+#' }
+#' @rdname precip.plot
+#' @export
 
 precip.plot <- function(data_list) {
   data <- data_list[[1]]

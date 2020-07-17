@@ -1,10 +1,22 @@
-# getting dwd data of 1 year x to use in other functions ------------------
-#inputs: 
-#id: of dwd station,
-#cnp: climate normal period (1 or 2: either 1961- 1990 or 1981 - 2010)
-#year: the year of which I want to have the climate anomalies
-
-#output: a list of: aggregated and corrected data, the year (input) and the cnp (input)
+#' @title FUNCTION_TITLE
+#' @description getting dwd data of 1 year x to use in other functions
+#' @param id of dwd station
+#' @param cnp climate normal period (1 or 2: either 1961- 1990 or 1981 - 2010)
+#' @param year  the year of which I want to have the climate anomalies
+#' @param updateProgress PARAM_DESCRIPTION
+#' @return a list of: aggregated and corrected data, the year (input) and the cnp (input)
+#' @details DETAILS
+#' @examples
+#' \dontrun{
+#' if(interactive()){
+#'  #EXAMPLE1
+#'  }
+#' }
+#' @seealso
+#'  \code{\link[base]{merge}}
+#' @rdname monthly.plot
+#' @export
+#' @importFrom base merge
 
 
 monthly.plot <- function(
@@ -117,6 +129,8 @@ monthly.plot <- function(
 
   return(list(clima_cpl, year, cnp))
 } # monthly anamolies ####
+
+
 
 monthly.plot <- function(
                          id,

@@ -1,8 +1,17 @@
-# temperature anomalies for a certain year x -------------------
-#
-# input: list of monthly.plot function in get_dwd_for_anomalies.R script
-# output: ggplot barplot of the year x of temperature anomalies for year x and station x
- 
+#' @title FUNCTION_TITLE
+#' @description temperature anomalies for a certain year
+#' @param data_list list of monthly.plot function in get_dwd_for_anomalies.R script
+#' @return ggplot barplot of the year x of temperature anomalies for year x and station x
+#' @details DETAILS
+#' @examples
+#' \dontrun{
+#' if(interactive()){
+#'  #EXAMPLE1
+#'  }
+#' }
+#' @rdname temp.plot
+#' @export
+
 temp.plot <- function(data_list) {
   data <- data_list[[1]]
   year <- data_list[[2]]
@@ -78,6 +87,6 @@ temp.plot <- function(data_list) {
         aes(x = x_ref, y = 0.5 * a_reference, label = round(a_reference, 0)),
         col = "black"
       ) +
-      ylab("mean monthly temperature [°C]")
+      ylab("mean monthly temperature [?C]")
   )
 }

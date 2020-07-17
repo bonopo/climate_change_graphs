@@ -1,7 +1,20 @@
-# cumsum plot of x years compared to reference period -------------------------------
-#input: list of dwd.cs.data function in get_dwd_for_cumsum.R script
-#output: 1 ggplot with x lines plus one reference line
-
+#' @title FUNCTION_TITLE
+#' @description cumsum plot of x years compared to reference period
+#' @param data_list list of dwd.cs.data function in get_dwd_for_cumsum.R script
+#' @return 1 ggplot with x lines plus one reference line
+#' @details DETAILS
+#' @examples
+#' \dontrun{
+#' if(interactive()){
+#'  #EXAMPLE1
+#'  }
+#' }
+#' @seealso
+#'  \code{\link[dplyr]{select}}
+#' @rdname plot.cs
+#' @export
+#' @importFrom dplyr select
+#'
 plot.cs <- function(data_list) {
   clima_cpl <- data_list[[1]]
   year <- data_list[[2]]

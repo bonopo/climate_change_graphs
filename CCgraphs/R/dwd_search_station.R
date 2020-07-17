@@ -1,13 +1,24 @@
-
-# search dwd station by coordinate ----------------------------------
-
-# this function produces a table with the nearby (input: radius) found dwd station near by an entered (input) coordinate.
-# input:
-# lon: longitude
-# lat: latitude
-# rad: radius to search for nearby dwd stations
-# ref: the reference period you want to compare the data to. This is important as it then automatically filters out stations that don't have data in the time of the refernce period. And no data means no data at all. It doesn't check for NAs. This is done in a later step (see function montly.plot or dwd.cs.data)
-
+#' @title FUNCTION_TITLE
+#' @description search dwd station by coordinate
+#' @param lon longitude
+#' @param lat latitude
+#' @param rad radius to search for nearby dwd stations
+#' @param ref the reference period you want to compare the data to. This is important as it
+#' then automatically filters out stations that don't have data in the time of the refernce period.
+#' And no data means no data at all. It doesn't check for NAs. This is done in a later step
+#' (see function montly.plot or dwd.cs.data)
+#' @return this function produces a table with the nearby (input: radius)
+#'  found dwd station near by an entered (input) coordinate.
+#' @details DETAILS
+#' @examples
+#' \dontrun{
+#' if(interactive()){
+#'  #EXAMPLE1
+#'  }
+#' }
+#' @rdname dwd.search
+#' @export
+#'
 dwd.search <- function(lon, lat, rad, ref) {
   hist_stations <- nearbyStations(
     as.numeric(lat),
@@ -48,7 +59,7 @@ dwd.search <- function(lon, lat, rad, ref) {
   print_stations %<>% .[order(print_stations$distance_km), ]
   print_stations$distance_km %<>% round(., 0)
 
-  colnames(print_stations) <- c("Stations_id", "Messungen ab", "Stationshoehe [m.ü.N.N.]", "Stationsname", "Distanz [km] von Eingabe Koordinaten")
+  colnames(print_stations) <- c("Stations_id", "Messungen ab", "Stationshoehe [m.?.N.N.]", "Stationsname", "Distanz [km] von Eingabe Koordinaten")
 
 
   return(print_stations[c(1:6), ])
