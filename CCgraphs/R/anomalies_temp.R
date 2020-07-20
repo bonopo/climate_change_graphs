@@ -76,7 +76,7 @@ temp.plot <- function(data_list) {
       ) +
       geom_text(
         data = diff, aes(
-          x = x_int,
+          x = x_ref,
           y = 0.5 * b_interest,
           label = round(b_interest, 0)
         ),
@@ -84,7 +84,7 @@ temp.plot <- function(data_list) {
       ) +
       geom_text(
         data = diff,
-        aes(x = x_ref, y = 0.5 * a_reference, label = round(a_reference, 0)),
+        aes(x = x_int, y = 0.5 * a_reference, label = round(a_reference, 0)),
         col = "black"
       ) +
       ylab("mean monthly temperature [?C]")
