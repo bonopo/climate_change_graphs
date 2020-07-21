@@ -1,25 +1,25 @@
-ui <- shinyUI(dashboardPage(
-  
-  
+ui <- shinyUI(shinydashboard::dashboardPage(
+
+
   skin = "green",
 
 # shiny app setup ---------------------------------------------------------
 
 
-  dashboardHeader(title = "Climate Graphics Germany"),
+shinydashboard::dashboardHeader(title = "Climate Graphics Germany"),
 
-  dashboardSidebar(sidebarMenu(
-    menuItem("DWD ID", tabName = "dwd_id", icon = icon("table")),
-    menuItem("Niederschlagssummen", tabName = "ns_cum_sum", icon = icon("bar-chart-o")),
-    menuItem("Monatliche Anomalien", tabName = "anomalies", icon = icon("bar-chart-o"))
+shinydashboard::dashboardSidebar(shinydashboard::sidebarMenu(
+  shinydashboard::menuItem("DWD ID", tabName = "dwd_id", icon = icon("table")),
+  shinydashboard::menuItem("Niederschlagssummen", tabName = "ns_cum_sum", icon = icon("bar-chart-o")),
+  shinydashboard::menuItem("Monatliche Anomalien", tabName = "anomalies", icon = icon("bar-chart-o"))
     #TODO:menuItem("Niederschlagsdefizit Karte", tabName = "ausgabe", icon = icon("line-chart"))
   )),
 
-  dashboardBody(
+shinydashboard::dashboardBody(
     # shinyjs::useShinyjs(), #use shiny js to disable the ID field
-    tabItems(
-# dwd station search ------------------------------------------------------      
-      tabItem(
+  shinydashboard::tabItems(
+# dwd station search ------------------------------------------------------
+shinydashboard::tabItem(
         tabName = "dwd_id",
         fluidRow(
           textInput("lon",
@@ -57,7 +57,7 @@ ui <- shinyUI(dashboardPage(
 # cum sum plot and table --------------------------------------------------
 
 
-      tabItem(
+shinydashboard::tabItem(
         tabName = "ns_cum_sum",
         fluidRow(
           selectInput("year",
@@ -89,7 +89,7 @@ ui <- shinyUI(dashboardPage(
 # monthly anomalies -------------------------------------------------------
 
 
-      tabItem(
+shinydashboard::tabItem(
         tabName = "anomalies",
         fluidRow(
           selectInput("year_anomalie",

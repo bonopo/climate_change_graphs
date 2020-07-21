@@ -1,30 +1,30 @@
-# german map of deficit#german map of deficit
-install.packages("leaflet")
-library(rdwd, RCurl)
-library(rdwd)
-data(geoIndex)
-library(leaflet)
-
-
-data("metaIndex")
-m <- metaIndex
-m <- m[m$res == "monthly" & m$var == "kl" & m$per == "recent" & m$hasfile, ]
-
-head(m)
-msf <- sf::st_as_sf(m, coords = c("geoLaenge", "geoBreite"), crs = 4326)
-# Read district shapefile
-# downloaded from https://public.opendatasoft.com/explore/dataset/landkreise-in-germany/export/
-# TODO: incorporate into package (Justus?)
-lk <- sf::st_read("../../landkreise-in-germany.shp")
-
-# intersections: list with msf rownumbers for each district getting all DWD Id that measure rain recently in  each Landkreis
-int <- sf::st_intersects(lk, msf)
-
-plot(lk[, "id_2"], reset = FALSE)
-berryFunctions::colPoints("geoLaenge", "geoBreite", "Stationshoehe", data = m, add = T, legend = F)
-
-nrow(lk)
-
+# # german map of deficit#german map of deficit
+# install.packages("leaflet")
+# library(rdwd, RCurl)
+# library(rdwd)
+# data(geoIndex)
+# library(leaflet)
+#
+#
+# data("metaIndex")
+# m <- metaIndex
+# m <- m[m$res == "monthly" & m$var == "kl" & m$per == "recent" & m$hasfile, ]
+#
+# head(m)
+# msf <- sf::st_as_sf(m, coords = c("geoLaenge", "geoBreite"), crs = 4326)
+# # Read district shapefile
+# # downloaded from https://public.opendatasoft.com/explore/dataset/landkreise-in-germany/export/
+# # TODO: incorporate into package (Justus?)
+# lk <- sf::st_read("../../landkreise-in-germany.shp")
+#
+# # intersections: list with msf rownumbers for each district getting all DWD Id that measure rain recently in  each Landkreis
+# int <- sf::st_intersects(lk, msf)
+#
+# plot(lk[, "id_2"], reset = FALSE)
+# berryFunctions::colPoints("geoLaenge", "geoBreite", "Stationshoehe", data = m, add = T, legend = F)
+#
+# nrow(lk)
+#
 
 landkreis_rain <- function(lki) # LandKreisIndex (row number in lk)
 {
@@ -64,6 +64,6 @@ landkreis_rain <- function(lki) # LandKreisIndex (row number in lk)
   colnames(out) <- c("MESS_DATUM", as.character(lk$name_2[lki]))
   return(out)
 }
-
-rainLK <- pbapply::pblapply(c(1:nrow(lk)), FUN= landkreis_rain)
-#bla
+#
+# rainLK <- pbapply::pblapply(c(1:nrow(lk)), FUN= landkreis_rain)
+# #bla

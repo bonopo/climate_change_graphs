@@ -13,10 +13,8 @@
 #'  }
 #' }
 #' @seealso
-#'  \code{\link[base]{merge}}
 #' @rdname monthly.plot
 #' @export
-#' @importFrom base merge
 
 
 monthly.plot <- function(
@@ -110,7 +108,7 @@ monthly.plot <- function(
   year_int <- clima_cpl %>% filter(year == year(date)) # year to check for completeness
   time_seq <- data.frame(date = seq.Date(from = dmy(paste0("01-01-", year)), to = ymd(tail(year_int$date, 1)), by = "day")) # defining ideal time sequence
   if (NROW(time_seq) != NROW(year_int)) {
-    time_check <- base::merge(x = year_int, y = time_seq[[i]], by = "date", all.y = T)
+    time_check <- merge(x = year_int, y = time_seq[[i]], by = "date", all.y = T) # why did you use base::merge? its the base package
     my_gaps <- time_check[which(is.na(time_check$RSK)), ]
 
     showModal(modalDialog(
@@ -133,10 +131,10 @@ monthly.plot <- function(
 
 
 monthly.plot <- function(
-                         id,
-                         cnp,
-                         year,
-                         updateProgress) {
+  id,
+  cnp,
+  year,
+  updateProgress) {
   if (cnp == 1) {
     cnp_begin <- ymd("19610101")
     cnp_end <- ymd("19901231")
@@ -223,7 +221,7 @@ monthly.plot <- function(
   year_int <- clima_cpl %>% filter(year == year(date)) # year to check for completeness
   time_seq <- data.frame(date = seq.Date(from = dmy(paste0("01-01-", year)), to = ymd(tail(year_int$date, 1)), by = "day")) # defining ideal time sequence
   if (NROW(time_seq) != NROW(year_int)) {
-    time_check <- base::merge(x = year_int, y = time_seq[[i]], by = "date", all.y = T)
+    time_check <- merge(x = year_int, y = time_seq[[i]], by = "date", all.y = T) # why did you used base::merge?
     my_gaps <- time_check[which(is.na(time_check$RSK)), ]
 
     showModal(modalDialog(

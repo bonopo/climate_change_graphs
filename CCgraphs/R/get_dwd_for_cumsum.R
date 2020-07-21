@@ -13,10 +13,8 @@
 #'  }
 #' }
 #' @seealso
-#'  \code{\link[base]{merge}}
 #' @rdname dwd.cs.data
 #' @export
-#' @importFrom base merge
 
 dwd.cs.data <- function(
                         id,
@@ -126,7 +124,7 @@ dwd.cs.data <- function(
     year_int <- clima_cpl %>% filter(year[i] == year(date)) # year to check for completeness
     time_seq[[i]] <- data.frame(date = seq.Date(from = dmy(paste0("01-01-", year[i])), to = ymd(tail(year_int$date, 1)), by = "day")) # defining ideal time sequence
     if (NROW(time_seq[[i]]) != NROW(year_int)) {
-      time_check <- base::merge(x = year_int, y = time_seq[[i]], by = "date", all.y = T)
+      time_check <- merge(x = year_int, y = time_seq[[i]], by = "date", all.y = T) # why did you do base::merge??
       my_gaps <- time_check[which(is.na(time_check$RSK)), ]
 
       showModal(modalDialog(

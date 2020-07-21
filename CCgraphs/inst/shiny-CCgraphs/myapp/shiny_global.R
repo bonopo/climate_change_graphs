@@ -69,6 +69,6 @@ remove_row <- function(data, rows) {
 check_packages(c("shiny", "shinydashboard", "shinyjs", "shinyBS", "ggplot2", "scales", "lubridate", "geosphere", "rdwd", "tidyverse", "RCurl", "RColorBrewer", "shinyalert", "magrittr"))
 
 # wd
->>>>>>> master:shiny_global.R
+# master:shiny_global.R
 
-setwd("C:/Users/Menke/Documents/Uni/R_practice/climate_change_graphs/")
+# setwd("C:/Users/Menke/Documents/Uni/R_practice/climate_change_graphs/")
