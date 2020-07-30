@@ -83,31 +83,33 @@ landkreis_rain <- function(lki, year_of_interest) # LandKreisIndex (row number i
 
   ref_station_61 =NA; ref_station_71 = NA; ref_station_81 = NA
 
+  #selecting all reference stations with id (can be several staions per Landkreis!) and extracting their monthly mean sum. If severel stations the mean over all stations is extracted
+
   if (any(id %in% ref_61$Stations_id)) {
     ref_temp <- ref_61 %>%
-      dplyr::filter(Stations_id == id) %>%
+      dplyr::filter(Stations_id %in% id) %>%
       dplyr::select(contains("."), "Jahr") %>%
       dplyr::mutate_if(is.character, as.numeric) %>%
       as.matrix() %>%
       apply(., 2, mean, na.rm = T) # if there are more than one station, mean of the stations.
 
     # extracting the correct sum of the reference period/station
-    if (nrow(out) == 12) {
+    if (month(out$date[nrow(out)]) == 12) { #if one looks at the whole year
       ref_station_61 <- as.numeric(ref_temp$Jahr)
     } else {
-      ref_station_61 <- as.numeric(ref_temp[3:(nrow(out) + 2)]) %>% sum()
+      ref_station_61 <- as.numeric(ref_temp[3:(nrow(out) + 2)]) %>% sum() #taking the cumulative sum of all month of the reference stations
     }
   }
   if (any(id %in% ref_71$Stations_id)) {
     ref_temp <- ref_71 %>%
-      dplyr::filter(Stations_id == id) %>%
+      dplyr::filter(Stations_id %in% id) %>%
       dplyr::select(contains("."), "Jahr") %>%
       dplyr::mutate_if(is.character, as.numeric) %>%
       as.matrix() %>%
       apply(., 2, mean, na.rm = T) # if there are more than one station, mean of the stations.
 
     # extracting the correct sum of the reference period/station
-    if (nrow(out) == 12) {
+    if (month(out$date[nrow(out)]) == 12) {
       ref_station_71 <- as.numeric(ref_temp$Jahr)
     } else {
       ref_station_71 <- as.numeric(ref_temp[3:(nrow(out) + 2)]) %>% sum()
@@ -115,14 +117,14 @@ landkreis_rain <- function(lki, year_of_interest) # LandKreisIndex (row number i
   }
   if (any(id %in% ref_81$Stations_id)) {
     ref_temp <- ref_81 %>%
-      dplyr::filter(Stations_id == id) %>%
+      dplyr::filter(Stations_id %in% id) %>%
       dplyr::select(contains("."), "Jahr") %>%
       dplyr::mutate_if(is.character, as.numeric) %>%
       as.matrix() %>%
       apply(., 2, mean, na.rm = T) # if there are more than one station, mean of the stations.
 
     # extracting the correct sum of the reference period/station
-    if (nrow(out) == 12) {
+    if (month(out$date[nrow(out)]) == 12) {
       ref_station_81 <- as.numeric(ref_temp$Jahr)
     } else {
       ref_station_81 <- as.numeric(ref_temp[3:(nrow(out) + 2)]) %>% sum()
@@ -176,3 +178,5 @@ head(lk)
 #
 # nrow(lk)
 #
+
+save.image(file= "ws_data.RData")
