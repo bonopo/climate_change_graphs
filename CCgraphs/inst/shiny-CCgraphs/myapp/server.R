@@ -15,29 +15,25 @@
 #' @export
 #'
 server <- function(input, output, session) {
-<<<<<<< HEAD:CCgraphs/R/shiny_server.R
+
 
   search_dwd <- eventReactive(input$search, {
 
-=======
+
 
 # search dwd station ------------------------------------------------------
   search_dwd <- eventReactive(input$search, {
->>>>>>> master:shiny_server.R
-    validate(
+  validate(
       need(input$lat != "", "Please enter a latitude"),
       need(input$lon != "", "Please enter a longitude"),
       need(input$rad != "", "Please enter a radius"),
       need(input$ref != "", "Please choose a reference period")
-<<<<<<< HEAD:CCgraphs/R/shiny_server.R
-
-
     )
 
     withProgress(message = 'Searching nearby stations', value = 0.14, {
         dwd.search(lat = input$lat, lon = input$lon,rad = input$rad, ref = input$ref)
          })
-=======
+
     )
 
 
@@ -46,19 +42,17 @@ server <- function(input, output, session) {
     withProgress(message = "Searching nearby stations", value = 0.14, {
       dwd.search(lat = input$lat, lon = input$lon, rad = input$rad, ref = input$ref)
     })
->>>>>>> master:server.R
-  })
+ })
 
   output$search_result <- renderTable({
     search_dwd()
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
     })
 
   #cumsum plot ####
 
   dwd_data <- eventReactive(input$create_plot, {
 
-=======
+
   })
 
 
@@ -67,27 +61,22 @@ server <- function(input, output, session) {
 
 
   dwd_data <- eventReactive(input$create_plot, {
->>>>>>> master:server.R
-    validate(
+   validate(
       need(input$year != "", "Please select a year"),
       need(input$ref != "", "Please select a refence period"),
       need(input$id != "", "Please select a Station id")
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
-
-=======
->>>>>>> master:server.R
-    )
 
 
 
+   )
 
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
+
+
+
     progress = Progress$new()
     progress$set(message = "plotting", value=0)
-=======
     progress <- Progress$new()
     progress$set(message = "plotting", value = 0)
->>>>>>> master:server.R
 
     on.exit(progress$close())
 
@@ -98,7 +87,7 @@ server <- function(input, output, session) {
       }
       progress$set(value = value, detail = detail)
     }
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
+
 
 
      dwd.cs.data(id = input$id, year = input$year, cnp = input$ref, updateProgress)
@@ -118,7 +107,7 @@ server <- function(input, output, session) {
  # monthly anomalies ####
   monthly_anomalies <- eventReactive(input$create_plot_anomalie, {
 
-=======
+
 
 
     dwd.cs.data(id = input$id, year = input$year, cnp = input$ref, updateProgress)
@@ -137,29 +126,24 @@ server <- function(input, output, session) {
 # monthly anomalies -------------------------------------------------------
 
   monthly_anomalies <- eventReactive(input$create_plot_anomalie, {
->>>>>>> master:server.R
-    validate(
+   validate(
       need(input$year_anomalie != "", "Please select a year"),
       need(input$ref_anomalie != "", "Please select a refence period"),
       need(input$id_anomalie != "", "Please select a Station id")
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
 
-=======
->>>>>>> master:server.R
-    )
+
+   )
 
 
 
 
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
-    progress = Progress$new()
+   progress = Progress$new()
     progress$set(message = "plotting", value=0)
-=======
+
 
 
     progress <- Progress$new()
     progress$set(message = "plotting", value = 0)
->>>>>>> master:server.R
 
     on.exit(progress$close())
 
@@ -170,7 +154,6 @@ server <- function(input, output, session) {
       }
       progress$set(value = value, detail = detail)
     }
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
 
 
      monthly.plot(id = input$id_anomalie, year = input$year_anomalie, cnp = input$ref_anomalie, updateProgress)
@@ -184,8 +167,7 @@ server <- function(input, output, session) {
       output$anomalies2 <- renderPlot({
      temp.plot(monthly_anomalies())
    })
-=======
->>>>>>> master:server.R
+
 
 
     monthly.plot(id = input$id_anomalie, year = input$year_anomalie, cnp = input$ref_anomalie, updateProgress)
@@ -195,11 +177,10 @@ server <- function(input, output, session) {
     precip.plot(monthly_anomalies())
   })
 
-<<<<<<< HEAD:CCgraphs/inst/shiny-CCgraphs/server.R
 
 }
 
-=======
+
   output$anomalies2 <- renderPlot({
     temp.plot(monthly_anomalies())
   })

@@ -50,7 +50,7 @@ m
 # landkreise polygon
 lk
 lki <- 260
-# year_of_interest = 2020
+# year_of_interest = 2018
 
 # necessary data:
 # list of unique ref ids
@@ -58,12 +58,18 @@ lki <- 260
 # int
 # m
 
-landkreis_rain <- function(lki, year_of_interest) # LandKreisIndex (row number in lk)
+year_of_interest = 2018
+
+lki = 1
+newdownload = T
+landkreis_rain <- function(lki, year_of_interest, newdownload = FALSE) # LandKreisIndex (row number in lk)
 {
 
   # checking if there is dwd stations in the landkreis and if there is reference data for ANY of the selected dwd stations. This is just a quick check a more detail checking is done in a later step. This is only to speed up the function, as it skips the whole function if there is ANY FALSE in the if statement
   id <- m[int[[lki]], "Stations_id"]
+  do.call(file.remove, list(list.files("./extr_data/old/", full.names = TRUE)))
   def <- NA
+  hist_file = NULL
   if (length(id) < 1) {
     warning("No recent rainfall data available for Landkreis ", lki, ": ", lk$name_2[lki], call. = FALSE)
     out <- data.frame(paste0("x-", year_of_interest), NA, lki, NA)
@@ -75,14 +81,51 @@ landkreis_rain <- function(lki, year_of_interest) # LandKreisIndex (row number i
     colnames(out) <- c("last_month", "number_of_stations", "lki", "def")
     return(out)
   } else {
+
+    if(year_of_interest == as.integer(substr(date(), 21,24))){
+      historicOrRecent = "r"
+    }else{
+      historicOrRecent = "h"
+    }
     # urls
     # TODO: m has to be incorporated in package as Dataset of all hourly precipitation recent DWD stations
     urls <- selectDWD(
       id = id,
-      res = "monthly", var = "kl", per = "r", outvec = TRUE
+      res = "monthly", var = "kl", per = historicOrRecent, outvec = TRUE
     )
+#error while downloading historic data
 
-    clims <- dataDWD(urls, varnames = FALSE, dir = "../localdata", quiet = T, overwrite = TRUE, force = T, progbar = 0)
+tt <- tryCatch(
+  dataDWD(urls, varnames = T, dir = "../localdata", quiet = T, overwrite = TRUE, force = newdownload, progbar = 0, read=T),
+  error=function(e) e, warning=function(w) w)
+
+if(is(tt, "warning")){
+url <- "ftp://ftp-cdc.dwd.de/climate_environment/CDC/observations_germany/climate/monthly/kl/historical/"
+filenames <- getURL(url,ftp.use.epsv = FALSE,dirlistonly = TRUE)
+filenames = paste(url, strsplit(filenames, "\r*\n")[[1]], sep = "")
+hist_file = grep(as.character(id), filenames)
+  if(is.null(hist_file))
+    {
+    # next todo change to for loop
+    print("No historic Data was found online.")
+  }
+
+download.file(filenames[hist_file], destfile = "old.zip",  mode="wb")
+unzip("./old.zip", exdir = "./extr_data/old")
+
+#importing historic
+files= list.files("./extr_data/old")
+clims = read.csv2(paste0("./extr_data/old/", files[str_detect(files, "produkt_klima_monat") %>% which()]), na.strings = "-999", fill=F, sep=";", dec=".") %>%
+  dplyr::select(MESS_DATUM = contains("MESS_DATUM_ENDE"), MO_RR) %>%
+  mutate(MESS_DATUM=ymd(MESS_DATUM))
+
+# do.call(file.remove, list(list.files("./extr_data/old/", full.names = TRUE)))
+
+}else{
+  clims = tt
+}
+
+
 
     # setting monthly mean
     if (length(urls) == 1) {
@@ -184,7 +227,7 @@ landkreis_rain <- function(lki, year_of_interest) # LandKreisIndex (row number i
       def
     )
   }
-
+  print(lki)
    return(result)
 }
 
@@ -194,9 +237,9 @@ landkreis_rain <- function(lki, year_of_interest) # LandKreisIndex (row number i
 # styler::style_file(path = "C:/Users/Menke/Documents/Uni/R_practice/climate_change_graphs/shiny_app/cc_graph/climate_change_graphs__vJR/CCgraphs/R/german_map_deficit.R")
 
 
-rainLK <- pbapply::pblapply(c(1:nrow(lk)), 2020, FUN = landkreis_rain)
+rainLK2 <- pbapply::pblapply(c(1:nrow(lk)), 2018, FUN = landkreis_rain)
 
-landkreis_rain(lki = 1, 2020)
+landkreis_rain(lki = 1, 2018)
 
 # rainLK is a large list with all stations with the recent rain data (since 12-2018). It is ordered by rows of the Landkreise i.e. the first element in the list is also the first row in the lk table.
 
@@ -208,14 +251,14 @@ remove <- which(df_rainLK$last_month != raster::modal(df_rainLK$last_month))
 df_rainLK$def[remove] <- NA
 
 
-lk[1,]
-
 lk$rain_deficit <- df_rainLK$def
 
 
-colour_palete <- dichromat::colorschemes$DarkRedtoBlue.18
+
 # (max(lk$rain_deficit, na.rm = T)-min(lk$rain_deficit, na.rm=T))
 which.min(lk$rain_deficit)
+
+
 
 if ((100 - min(lk$rain_deficit, na.rm = T)) > (max(lk$rain_deficit, na.rm = T) - 100)) {
   limits_scale <- c(min(lk$rain_deficit, na.rm = T), 100 + (100 - min(lk$rain_deficit, na.rm = T)))

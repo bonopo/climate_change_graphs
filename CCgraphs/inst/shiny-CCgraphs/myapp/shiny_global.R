@@ -1,4 +1,3 @@
-<<<<<<< HEAD:CCgraphs/R/shiny_global.R
 #preamble####
 ##
 check_packages = function(pkg){
