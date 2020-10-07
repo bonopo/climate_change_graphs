@@ -1,4 +1,4 @@
-#' @title FUNCTION_TITLE
+#' @title search dwd stations near you!
 #' @description search dwd station by coordinate
 #' @param lon longitude
 #' @param lat latitude

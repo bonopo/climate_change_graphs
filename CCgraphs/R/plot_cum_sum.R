@@ -1,4 +1,4 @@
-#' @title FUNCTION_TITLE
+#' @title plotting cum sum
 #' @description cumsum plot of x years compared to reference period
 #' @param data_list list of dwd.cs.data function in get_dwd_for_cumsum.R script
 #' @return 1 ggplot with x lines plus one reference line

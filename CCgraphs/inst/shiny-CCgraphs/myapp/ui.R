@@ -1,25 +1,23 @@
 ui <- shinyUI(shinydashboard::dashboardPage(
-
-
   skin = "green",
 
-# shiny app setup ---------------------------------------------------------
+  # shiny app setup ---------------------------------------------------------
 
 
-shinydashboard::dashboardHeader(title = "Climate Graphics Germany"),
+  shinydashboard::dashboardHeader(title = "Climate Graphics Germany"),
 
-shinydashboard::dashboardSidebar(shinydashboard::sidebarMenu(
-  shinydashboard::menuItem("DWD ID", tabName = "dwd_id", icon = icon("table")),
-  shinydashboard::menuItem("Niederschlagssummen", tabName = "ns_cum_sum", icon = icon("bar-chart-o")),
-  shinydashboard::menuItem("Monatliche Anomalien", tabName = "anomalies", icon = icon("bar-chart-o"))
-    #TODO:menuItem("Niederschlagsdefizit Karte", tabName = "ausgabe", icon = icon("line-chart"))
+  shinydashboard::dashboardSidebar(shinydashboard::sidebarMenu(
+    shinydashboard::menuItem("DWD ID", tabName = "dwd_id", icon = icon("table")),
+    shinydashboard::menuItem("Niederschlagssummen", tabName = "ns_cum_sum", icon = icon("bar-chart-o")),
+    shinydashboard::menuItem("Monatliche Anomalien", tabName = "anomalies", icon = icon("bar-chart-o"))
+    # TODO:menuItem("Niederschlagsdefizit Karte", tabName = "ausgabe", icon = icon("line-chart"))
   )),
 
-shinydashboard::dashboardBody(
+  shinydashboard::dashboardBody(
     # shinyjs::useShinyjs(), #use shiny js to disable the ID field
-  shinydashboard::tabItems(
-# dwd station search ------------------------------------------------------
-shinydashboard::tabItem(
+    shinydashboard::tabItems(
+      # dwd station search ------------------------------------------------------
+      shinydashboard::tabItem(
         tabName = "dwd_id",
         fluidRow(
           textInput("lon",
@@ -54,10 +52,10 @@ shinydashboard::tabItem(
 
 
 
-# cum sum plot and table --------------------------------------------------
+      # cum sum plot and table --------------------------------------------------
 
 
-shinydashboard::tabItem(
+      shinydashboard::tabItem(
         tabName = "ns_cum_sum",
         fluidRow(
           selectInput("year",
@@ -81,15 +79,15 @@ shinydashboard::tabItem(
 
           tableOutput("ns_cum_sum_data")
 
-          #TODO:actionButton('download', 'Download the plot')
+          # TODO:actionButton('download', 'Download the plot')
         )
       ),
 
 
-# monthly anomalies -------------------------------------------------------
+      # monthly anomalies -------------------------------------------------------
 
 
-shinydashboard::tabItem(
+      shinydashboard::tabItem(
         tabName = "anomalies",
         fluidRow(
           selectInput("year_anomalie",
@@ -113,7 +111,7 @@ shinydashboard::tabItem(
 
           plotOutput("anomalies2")
 
-          #ToDO:actionButton('download_anomalies', 'Download the plot')
+          # ToDO:actionButton('download_anomalies', 'Download the plot')
         )
       )
     )

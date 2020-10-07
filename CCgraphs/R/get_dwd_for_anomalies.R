@@ -126,7 +126,9 @@ monthly.plot <- function(
 
 
   return(list(clima_cpl, year, cnp))
-} # monthly anamolies ####
+}
+
+# monthly anamolies ####
 
 
 

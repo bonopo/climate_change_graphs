@@ -2,7 +2,7 @@
 % Please edit documentation in R/dwd_search_station.R
 \name{dwd.search}
 \alias{dwd.search}
-\title{FUNCTION_TITLE}
+\title{search DWD stations near you!}
 \usage{
 dwd.search(lon, lat, rad, ref)
 }
